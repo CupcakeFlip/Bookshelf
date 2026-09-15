@@ -1,0 +1,1 @@
+-- Database schema placeholder. The application schema will be added later.
