@@ -1,6 +1,6 @@
 {
-    "name": "vueapp",
-    "version": "0.0.0",
+    "name": "bookshelf",
+    "version": "0.0.1",
     "private": true,
     "type": "module",
     "scripts": {
@@ -17,6 +17,6 @@
     "devDependencies": {
         "@vitejs/plugin-vue": "^6.0.1",
         "sass": "1.78.0",
-        "vite": "^7.1.5"
+        "vite": "8.0.16"
     }
 }
