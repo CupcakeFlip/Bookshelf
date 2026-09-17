@@ -1,0 +1,67 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: _docker/php/Dockerfile
+    container_name: bookshelf-php
+    ports:
+      - "${PHP_PORT:-8000}:80"
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - bookshelf
+
+  mariadb:
+    image: mariadb:11.4
+    container_name: bookshelf-mariadb
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bookshelf
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.2-apache
+    container_name: bookshelf-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8080}:80"
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - bookshelf
+
+volumes:
+  mariadb_data:
+
+networks:
+  bookshelf:
+    driver: bridge

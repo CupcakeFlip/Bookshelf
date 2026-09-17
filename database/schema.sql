@@ -1,1 +1,37 @@
--- Database schema placeholder. The application schema will be added later.
+CREATE TABLE IF NOT EXISTS series (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    external_api_id VARCHAR(255) NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS books (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    external_api_id VARCHAR(255) NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    cover_url VARCHAR(2048) NULL,
+    series_id INT UNSIGNED NULL,
+    series_position DECIMAL(6,2) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_books_series
+        FOREIGN KEY (series_id) REFERENCES series (id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_books (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    book_id INT UNSIGNED NOT NULL UNIQUE,
+    status ENUM('want_to_read', 'reading', 'finished', 'dnf') NOT NULL DEFAULT 'want_to_read',
+    rating TINYINT UNSIGNED NULL,
+    date_started DATE NULL,
+    date_finished DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_user_books_rating CHECK (rating IS NULL OR rating BETWEEN 1 AND 5),
+    CONSTRAINT fk_user_books_book
+        FOREIGN KEY (book_id) REFERENCES books (id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
