@@ -30,32 +30,41 @@ function firstValue(array $values): mixed
     return null;
 }
 
-// Convert the author data from the API into a simple list of names.
+// Contributions contain the real Hardcover author IDs; author_names is only a fallback.
 function normalizeAuthors(mixed $value): array
 {
-    if (is_string($value)) {
-        return [$value];
-    }
-
     if (!is_array($value)) {
         return [];
     }
 
     $authors = [];
     foreach ($value as $author) {
-        $name = is_string($author)
-            ? $author
-            : (is_array($author) ? firstValue([$author['name'] ?? null, $author['author']['name'] ?? null]) : null);
+        if (is_string($author)) {
+            $name = $author;
+            $id = null;
+        } elseif (is_array($author)) {
+            $authorData = is_array($author['author'] ?? null) ? $author['author'] : $author;
+            $name = $authorData['name'] ?? null;
+            $id = $authorData['id'] ?? null;
+        } else {
+            continue;
+        }
 
         if (is_string($name) && $name !== '') {
-            $authors[] = $name;
+            $authors[] = ['id' => $id, 'name' => $name];
         }
     }
 
-    return array_values(array_unique($authors));
+    $uniqueAuthors = [];
+    foreach ($authors as $author) {
+        $key = ($author['id'] ?? '') . '|' . $author['name'];
+        $uniqueAuthors[$key] = $author;
+    }
+
+    return array_values($uniqueAuthors);
 }
 
-// Extract the most relevant series info and keep only the fields we need.
+// book_series.id is a relationship ID; the actual Hardcover series ID is nested in series.id.
 function normalizeSeries(mixed $value): ?array
 {
     if (!is_array($value)) {
@@ -69,26 +78,55 @@ function normalizeSeries(mixed $value): ?array
         }
     }
 
-    $name = firstValue([
-        $value['name'] ?? null,
-        $value['series']['name'] ?? null,
-    ]);
+    $series = is_array($value['series'] ?? null) ? $value['series'] : [];
+    $name = firstValue([$series['name'] ?? null, $value['name'] ?? null]);
 
     if ($name === null) {
         return null;
     }
 
+    $id = firstValue([
+        $series['id'] ?? null,
+        $value['series_id'] ?? null,
+    ]);
+
+    // A direct series object may legitimately expose its own id. Relation objects must use series.id above.
+    if ($id === null && $series === []) {
+        $id = $value['id'] ?? null;
+    }
+
     return [
-        'id' => firstValue([$value['id'] ?? null, $value['series_id'] ?? null, $value['series']['id'] ?? null]),
+        'id' => $id,
         'name' => $name,
         'position' => firstValue([$value['position'] ?? null, $value['series_position'] ?? null]),
     ];
 }
 
+function normalizeGenres(mixed $cachedTags): array
+{
+    $genres = is_array($cachedTags) && is_array($cachedTags['Genre'] ?? null)
+        ? $cachedTags['Genre']
+        : [];
+    $normalized = [];
+
+    foreach ($genres as $genre) {
+        if (!is_array($genre) || !isset($genre['tag'], $genre['tagSlug'])) {
+            continue;
+        }
+
+        $normalized[] = [
+            'name' => $genre['tag'],
+            'slug' => $genre['tagSlug'],
+        ];
+    }
+
+    return $normalized;
+}
+
 // Normalize a raw Hardcover result into the shape used by the frontend.
 // This hides the differences between API payload variations and keeps the app
 // more predictable than raw API data.
-function normalizeBook(mixed $book): array
+function normalizeBook(mixed $book, ?array $details = null): array
 {
     if (!is_array($book)) {
         return [
@@ -108,15 +146,14 @@ function normalizeBook(mixed $book): array
 
     $image = is_array($book['image'] ?? null) ? $book['image'] : [];
     $cachedImage = is_array($book['cached_image'] ?? null) ? $book['cached_image'] : [];
+    $contributions = is_array($book['contributions'] ?? null) ? $book['contributions'] : [];
+    $authorNames = is_array($book['author_names'] ?? null) ? $book['author_names'] : [];
 
     return [
         'hardcover_id' => firstValue([$book['id'] ?? null, $book['book_id'] ?? null]),
         'title' => firstValue([$book['title'] ?? null, $book['name'] ?? null]),
-        'authors' => normalizeAuthors(firstValue([
-            $book['authors'] ?? null,
-            $book['author_names'] ?? null,
-            $book['contributors'] ?? null,
-        ])),
+        'description' => firstValue([$details['description'] ?? null, $book['description'] ?? null]),
+        'authors' => normalizeAuthors($contributions !== [] ? $contributions : $authorNames),
         'cover_url' => firstValue([
             $book['cover_url'] ?? null,
             $book['image_url'] ?? null,
@@ -124,16 +161,64 @@ function normalizeBook(mixed $book): array
             $cachedImage['url'] ?? null,
         ]),
         'series' => normalizeSeries(firstValue([
-            $book['series'] ?? null,
             $book['featured_series'] ?? null,
             $book['book_series'] ?? null,
+            $book['series'] ?? null,
         ])),
+        'genres' => normalizeGenres($details['cached_tags'] ?? null),
         'release_date' => firstValue([
             $book['release_date'] ?? null,
             $book['publication_date'] ?? null,
             $book['published_date'] ?? null,
         ]),
     ];
+}
+
+function fetchBookDetails(int $bookId, string $token): ?array
+{
+    $graphql = <<<'GRAPHQL'
+query BookDetail($id: Int!) {
+  books_by_pk(id: $id) {
+    id
+    description
+    cached_tags
+  }
+}
+GRAPHQL;
+
+    $curl = curl_init(HARDCOVER_API_URL);
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode([
+            'query' => $graphql,
+            'variables' => ['id' => $bookId],
+        ]),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15,
+    ]);
+
+    $responseBody = curl_exec($curl);
+    $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    if ($responseBody === false || $httpStatus < 200 || $httpStatus >= 300) {
+        return null;
+    }
+
+    $response = json_decode($responseBody, true);
+    if (!is_array($response) || isset($response['errors'])) {
+        return null;
+    }
+
+    return is_array($response['data']['books_by_pk'] ?? null)
+        ? $response['data']['books_by_pk']
+        : null;
 }
 
 // Validate the incoming search term before the API call.
@@ -222,10 +307,18 @@ if (!empty($search['error'])) {
 // Extract the hit list and prepare a simplified list for the frontend.
 $searchResults = is_array($search['results'] ?? null) ? $search['results'] : [];
 $hits = is_array($searchResults['hits'] ?? null) ? $searchResults['hits'] : [];
+$normalizedBooks = [];
+
+foreach ($hits as $hit) {
+    $book = is_array($hit['document'] ?? null) ? $hit['document'] : null;
+    $bookId = is_array($book) && is_numeric($book['id'] ?? null) ? (int) $book['id'] : null;
+    $details = $bookId === null ? null : fetchBookDetails($bookId, $token);
+    $normalizedBooks[] = normalizeBook($hit, $details);
+}
 
 respond([
     'query' => $query,
-    'results' => array_map('normalizeBook', $hits),
+    'results' => $normalizedBooks,
     'metadata' => [
         'found' => $searchResults['found'] ?? 0,
         'page' => $searchResults['page'] ?? 1,

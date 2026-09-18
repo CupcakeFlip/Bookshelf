@@ -26,7 +26,7 @@ npm run docker:status
 npm run docker:logs
 ```
 
-MariaDB initialiseres første gang den navngivne volume oprettes. `database/schema.sql` opretter tabellerne `series`, `books` og `user_books`. Data bevares ved normale stop og genstarter. Hvis databasen skal nulstilles, så schemaet køres igen, skal volume slettes:
+MariaDB initialiseres første gang den navngivne volume oprettes. `database/schema.sql` opretter tabellerne for bøger, serier, forfattere, genrer og brugerstatus. Ved ændringer i det lokale schema skal volume nulstilles, da der ikke bruges migrationer:
 
 ```powershell
 docker compose down -v
