@@ -34,3 +34,21 @@ npm run docker:start
 ```
 
 PHP-forbindelsen bruger miljøvariablerne i `.env` og PDO med `utf8mb4`. Databaseværten inde i Docker er `mariadb`.
+
+## Hardcover-søgning
+
+Hardcover bruges som ekstern datakilde til bogsøgning. Opret et API-token i Hardcover under kontoens API-indstillinger, og indsæt det lokalt i `.env`:
+
+```dotenv
+HARDCOVER_API_TOKEN=din-lokale-token
+```
+
+Tokenet skal have tilladelsen `read:catalog`. Tokenet er kun serverkonfiguration og skal aldrig committes.
+
+Søg efter bøger med:
+
+```text
+http://localhost:8000/api/search-books.php?q=Ironside
+```
+
+Endpointet returnerer normaliserede bogdata fra Hardcover. Søgeresultater gemmes ikke automatisk i MariaDB; lagring implementeres separat senere.
