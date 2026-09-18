@@ -51,4 +51,15 @@ Søg efter bøger med:
 http://localhost:8000/api/search-books.php?q=Ironside
 ```
 
-Endpointet returnerer normaliserede bogdata fra Hardcover. Søgeresultater gemmes ikke automatisk i MariaDB; lagring implementeres separat senere.
+Endpointet returnerer normaliserede bogdata fra Hardcover. Søgeresultater gemmes ikke automatisk i MariaDB.
+
+En valgt bog kan gemmes med:
+
+```http
+POST http://localhost:8000/api/books.php
+Content-Type: application/json
+
+{"hardcover_id": 1286648}
+```
+
+PHP bruger kun Hardcover-ID'et fra requesten og henter de autoritative bogdetaljer server-side. Nye bøger får status `want_to_read`. Gentagne POST-kald er idempotente: den eksisterende bog og brugerstatus genbruges uden dubletter.
