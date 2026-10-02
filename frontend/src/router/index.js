@@ -1,7 +1,8 @@
-import {createRouter, createWebHistory} from 'vue-router';
+import {createRouter, createWebHistory} from "vue-router";
 import Frontpage from "@/views/Frontpage.vue";
 import ListsView from "@/views/ListsView.vue";
 import LibraryView from "@/views/LibraryView.vue";
+import StatsView from "@/views/StatsView.vue";
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,14 +15,19 @@ const router = createRouter({
         {
             path: "/lists",
             name: "lists",
-            component: ListsView
+            component: ListsView,
+        },
+        {
+            path: "/stats",
+            name: "stats",
+            component: StatsView,
         },
         {
             path: "/library",
             name: "library",
-            component: LibraryView
+            component: LibraryView,
         },
-    ]
-})
+    ],
+});
 
 export default router;

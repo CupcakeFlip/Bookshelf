@@ -2,6 +2,7 @@
 import Navbar from "@/components/Navbar.vue";
 import BookListRow from "@/components/BookListRow.vue";
 
+// Eksempeldata for de læselister, der vises på siden.
 const lists = [
     {
         id: 1,
@@ -21,9 +22,12 @@ const lists = [
         ]
     }
 ];
+
+// Modtager den valgte liste; navigation kan kobles på her senere.
 const openList = list => console.log(list);
 </script>
 <template>
+    <!-- Hver liste får sin egen række med et udvalg af bogforsider. -->
     <Navbar/>
     <main class="container py-4"><h1 class="mb-4">Lists</h1>
         <div class="d-grid gap-3">

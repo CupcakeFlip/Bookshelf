@@ -5,43 +5,50 @@ import BookGrid from "@/components/BookGrid.vue";
 
 const query = ref("");
 const genre = ref("");
+
+// Eksempeldata, som senere kan erstattes af bøger fra backend eller store.
 const books = [
     {
         id: 1,
         title: "Plier",
         authors: ["Jane Washington"],
         series: {name: "Ironside Academy", position: 5},
-        cover: "https://placehold.co/300x450?text=Plier",
+        cover_url: "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1732736809i/222024155.jpg",
         format: "Audiobook",
         status: "reading",
-        genres: ["Fantasy"]
+        genres: ["Fantasy", "Romance"]
     },
     {
         id: 2,
         title: "The Gravewood",
         authors: ["A. N. Author"],
-        cover: "https://placehold.co/300x450?text=Gravewood",
+        cover_url: "https://placehold.co/300x450?text=Gravewood",
         format: "E-book",
         status: "want-to-read",
-        genres: ["Mystery"]
+        genres: ["Mystery", "Romance"]
     },
     {
         id: 3,
         title: "The Long Way Home",
         authors: ["R. North"],
-        cover: "https://placehold.co/300x450?text=Home",
+        cover_url: "https://placehold.co/300x450?text=Home",
         format: "Hardcover",
         status: "finished",
         genres: ["Fantasy"]
     }
 ];
+
+// Udleder genrefilteret dynamisk, så nye genrer automatisk bliver til valgmuligheder.
 const genres = computed(() => [...new Set(books.flatMap(book => book.genres ?? []))]);
+
+// Filtrerer både på titel/forfatter og den valgte genre.
 const filteredBooks = computed(() => books.filter(
     book => (!query.value || book.title.toLowerCase().includes(query.value.toLowerCase()) ||
             book.authors.some(author => author.toLowerCase().includes(query.value.toLowerCase()))) &&
         (!genre.value || book.genres?.includes(genre.value))));
 </script>
 <template>
+    <!-- Søgning og genrefilter er bundet til reaktive værdier og opdaterer grid'et automatisk. -->
     <Navbar/>
     <main class="container py-4">
         <div class="mb-4"><h1 class="mb-3">Catalogue</h1>

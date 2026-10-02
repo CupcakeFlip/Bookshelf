@@ -1,21 +1,22 @@
 <template>
-    <nav class="navbar navbar-expand-lg navbar-dark" aria-label="Primary navigation">
+    <!-- Navigationen bruger router-links, så siden skifter uden en fuld genindlæsning. -->
+    <nav aria-label="Primary navigation" class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <RouterLink class="navbar-brand fw-semibold" to="/">Bookshelf</RouterLink>
-            <button class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#primary-navigation"
-                aria-controls="primary-navigation"
+            <button aria-controls="primary-navigation"
                 aria-expanded="false"
-                aria-label="Toggle navigation"><span class="navbar-toggler-icon"/></button>
+                aria-label="Toggle navigation"
+                class="navbar-toggler"
+                data-bs-target="#primary-navigation"
+                data-bs-toggle="collapse"
+                type="button"><span class="navbar-toggler-icon"/></button>
             <div id="primary-navigation" class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
                     <li v-for="item in items" :key="item.to" class="nav-item">
-                        <RouterLink class="nav-link"
-                            :to="item.to"
-                            :aria-disabled="item.soon ? 'true' : undefined"
+                        <RouterLink :aria-disabled="item.soon ? 'true' : undefined"
                             :tabindex="item.soon ? -1 : undefined"
+                            :to="item.to"
+                            class="nav-link"
                             @click="item.soon ? stop($event) : undefined">{{ item.label }}<span v-if="item.soon"
                             class="visually-hidden"> (coming soon)</span></RouterLink>
                     </li>
@@ -25,11 +26,14 @@
     </nav>
 </template>
 <script setup>
+// Samler alle menupunkter ét sted, så navigationen er nem at udvide.
 const items = [
     {label: "Home", to: "/"},
     {label: "Lists", to: "/lists"},
     {label: "Stats", to: "/stats", soon: true},
     {label: "Library", to: "/library"}
 ];
+
+// Forhindrer midlertidige links i at navigere, indtil funktionen er implementeret.
 const stop = event => event.preventDefault();
 </script>
