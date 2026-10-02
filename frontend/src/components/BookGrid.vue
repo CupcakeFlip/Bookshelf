@@ -12,8 +12,9 @@
 <script setup>
 import BookCard from "./BookCard.vue";
 
+/** Books displayed as cards in the responsive grid. */
 defineProps({books: {type: Array, default: () => []}});
 
-// Sender handlinger fra hvert kort videre til komponentens forælder.
+/** Events emitted by a card and forwarded to the parent view. */
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
 </script>

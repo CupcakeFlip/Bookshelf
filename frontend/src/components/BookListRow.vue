@@ -13,11 +13,13 @@
 <script setup>
 import {computed} from "vue";
 
+/** List data and maximum number of preview covers to show. */
 const props = defineProps({list: {type: Object, required: true}, previewLimit: {type: Number, default: 8}});
 
+/** Emitted when the user opens a list. */
 const emit = defineEmits(["open"]);
 
-// Understøtter begge navne på preview-feltet og begrænser antallet af viste bøger.
+/** Selects the supported preview field and limits the visible covers. */
 const preview = computed(() => (props.list.recentBooks ?? props.list.previewBooks ?? []).slice(0, props.previewLimit));
 
 </script>

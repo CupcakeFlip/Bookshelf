@@ -2,7 +2,7 @@
 import Navbar from "@/components/Navbar.vue";
 import BookListRow from "@/components/BookListRow.vue";
 
-// Eksempeldata for de læselister, der vises på siden.
+// Temporary reading-list data used by this view.
 const lists = [
     {
         id: 1,
@@ -23,7 +23,7 @@ const lists = [
     }
 ];
 
-// Modtager den valgte liste; navigation kan kobles på her senere.
+/** Receives the selected list; detailed list navigation can be added later. */
 const openList = list => console.log(list);
 </script>
 <template>

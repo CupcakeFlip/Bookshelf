@@ -24,10 +24,12 @@
 <script setup>
 import {computed} from "vue";
 
+/** Book data used to populate the card. */
 const props = defineProps({book: {type: Object, required: true}});
+/** User actions that the parent view can handle. */
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
 
-// Normaliserer forskellige mulige API-felter til de værdier, som kortet skal vise.
+// Normalize possible API field names before displaying the book.
 const cover_url = computed(() => props.book.cover_url ?? "");
 const authors = computed(
     () => Array.isArray(props.book.authors) ? props.book.authors.map(a => typeof a === "string" ? a : a?.name)
@@ -37,7 +39,7 @@ const name = computed(() => props.book.series?.name ?? props.book.seriesName ??
 const position = computed(() => props.book.series?.position ?? props.book.seriesPosition);
 const seriesText = computed(() => name.value ? name.value + (position.value ? " #" + position.value : "") : "");
 
-// Gør status stabil på tværs af bindestreger, mellemrum og underscore-formater.
+// Normalize status spelling so the same status always gets the same label and style.
 const normalized = computed(
     () => String(props.book.status ?? "").toLowerCase().trim().replaceAll("_", "-").replaceAll(" ", "-"));
 const statusClass = computed(() => ({

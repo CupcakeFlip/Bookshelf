@@ -26,7 +26,7 @@
     </nav>
 </template>
 <script setup>
-// Samler alle menupunkter ét sted, så navigationen er nem at udvide.
+/** Navigation entries rendered in the primary menu. */
 const items = [
     {label: "Home", to: "/"},
     {label: "Lists", to: "/lists"},
@@ -34,6 +34,6 @@ const items = [
     {label: "Library", to: "/library"}
 ];
 
-// Forhindrer midlertidige links i at navigere, indtil funktionen er implementeret.
+/** Prevents placeholder links from navigating before their feature exists. */
 const stop = event => event.preventDefault();
 </script>

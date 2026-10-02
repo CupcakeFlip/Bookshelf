@@ -2,7 +2,7 @@
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
 
-// Eksempeldata for bøgerne i brugerens personlige bibliotek.
+// Temporary library data used until this view reads from the backend.
 const books = [
     {
         id: 1,

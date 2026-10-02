@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 
+/**
+ * Sends a JSON response and stops execution immediately.
+ *
+ * @param array $data Response data.
+ * @param int $status HTTP response status.
+ * @return never
+ */
 function respond(array $data, int $status = 200): never
 {
     http_response_code($status);
@@ -12,6 +19,12 @@ function respond(array $data, int $status = 200): never
     exit;
 }
 
+/**
+ * Returns the first value that is not null or empty.
+ *
+ * @param array $values Values to inspect in order.
+ * @return mixed The first usable value, or null when none exists.
+ */
 function firstValue(array $values): mixed
 {
     foreach ($values as $value) {
@@ -20,6 +33,12 @@ function firstValue(array $values): mixed
     return null;
 }
 
+/**
+ * Converts a database book row into the public API response shape.
+ *
+ * @param array $book Database row including related data.
+ * @return array Normalized book data.
+ */
 function normalizeBook(array $book): array
 {
     return [
@@ -41,6 +60,13 @@ function normalizeBook(array $book): array
     ];
 }
 
+/**
+ * Fetches complete book data and relationships from Hardcover.
+ *
+ * @param int $bookId Hardcover book identifier.
+ * @param string $token Hardcover API token.
+ * @return array Normalized book data from Hardcover.
+ */
 function fetchHardcoverBook(int $bookId, string $token): array
 {
     $graphql = <<<'GRAPHQL'
@@ -122,6 +148,14 @@ GRAPHQL;
     ];
 }
 
+/**
+ * Loads a saved book and its related authors and genres from MariaDB.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param int $bookId Local book identifier.
+ * @return array Normalized saved book.
+ * @throws RuntimeException When the book cannot be found.
+ */
 function savedBook(PDO $pdo, int $bookId): array
 {
     $stmt = $pdo->prepare('SELECT b.*, s.id AS series_local_id, s.external_api_id AS series_external_api_id, s.name AS series_name, ub.status FROM books b LEFT JOIN series s ON s.id = b.series_id LEFT JOIN user_books ub ON ub.book_id = b.id WHERE b.id = ?');
@@ -137,6 +171,14 @@ function savedBook(PDO $pdo, int $bookId): array
     return normalizeBook($book);
 }
 
+/**
+ * Saves a Hardcover book and its relationships in one transaction.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param array $book Normalized Hardcover book data.
+ * @return array The saved book.
+ * @throws Throwable When a database operation fails.
+ */
 function saveBook(PDO $pdo, array $book): array
 {
     // One transaction covers series, canonical book, relationships, and user status.
@@ -192,21 +234,25 @@ function saveBook(PDO $pdo, array $book): array
     }
 }
 
-$pdo = require __DIR__ . '/../config/database.php';
+// Load the shared database connection before handling the request.
+$db = require __DIR__ . '/../settings/init.php';
+$pdo = $db;
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
+    // Return all saved books for the library view.
     $books = [];
     foreach ($pdo->query('SELECT id FROM books ORDER BY id')->fetchAll() as $row) $books[] = savedBook($pdo, (int) $row['id']);
     respond($books);
 }
 if ($method !== 'POST') respond(['error' => 'Method not allowed.'], 405);
 
+// Read and validate the JSON body for a book-save request.
 $payload = json_decode((string) file_get_contents('php://input'), true);
 if (!is_array($payload) || !array_key_exists('hardcover_id', $payload)) respond(['error' => 'A JSON body with hardcover_id is required.'], 400);
 $hardcoverId = filter_var($payload['hardcover_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
 
-// Identify existing books before contacting Hardcover so repeated saves are idempotent.
+// Reuse an existing book before contacting Hardcover so repeated saves stay idempotent.
 $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
 $stmt->execute([(string) $hardcoverId]);
 $existingId = $stmt->fetchColumn();
@@ -214,6 +260,7 @@ if ($existingId) {
     $pdo->prepare("INSERT IGNORE INTO user_books (book_id, status) VALUES (?, 'want_to_read')")->execute([$existingId]);
     respond(savedBook($pdo, (int) $existingId));
 }
+// Fetch new book details only after validating the configured API token.
 $token = trim((string) getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') respond(['error' => 'The Hardcover API is not configured.'], 503);
 try {

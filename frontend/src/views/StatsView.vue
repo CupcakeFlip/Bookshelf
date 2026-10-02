@@ -8,7 +8,7 @@
 <script setup>
 import Navbar from "@/components/Navbar.vue";
 
-// Component logic here
+// Statistics content will be added when this route becomes active.
 </script>
 
 <style scoped></style>

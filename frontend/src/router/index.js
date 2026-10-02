@@ -4,6 +4,7 @@ import ListsView from "@/views/ListsView.vue";
 import LibraryView from "@/views/LibraryView.vue";
 import StatsView from "@/views/StatsView.vue";
 
+// Define the client-side pages without full browser reloads.
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [

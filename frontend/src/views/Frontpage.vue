@@ -6,7 +6,7 @@ import BookGrid from "@/components/BookGrid.vue";
 const query = ref("");
 const genre = ref("");
 
-// Eksempeldata, som senere kan erstattes af bøger fra backend eller store.
+// Temporary catalogue data until the page is connected to the backend or a store.
 const books = [
     {
         id: 1,
@@ -38,10 +38,10 @@ const books = [
     }
 ];
 
-// Udleder genrefilteret dynamisk, så nye genrer automatisk bliver til valgmuligheder.
+/** Builds the genre filter options from the available books. */
 const genres = computed(() => [...new Set(books.flatMap(book => book.genres ?? []))]);
 
-// Filtrerer både på titel/forfatter og den valgte genre.
+/** Filters books by the search text and selected genre. */
 const filteredBooks = computed(() => books.filter(
     book => (!query.value || book.title.toLowerCase().includes(query.value.toLowerCase()) ||
             book.authors.some(author => author.toLowerCase().includes(query.value.toLowerCase()))) &&
