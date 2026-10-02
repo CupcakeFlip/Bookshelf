@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 
-function respond(array $payload, int $status = 200): never
+function respond(array $data, int $status = 200): never
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -65,7 +65,7 @@ GRAPHQL;
     ]);
     $body = curl_exec($curl);
     $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
+
     if ($body === false) respond(['error' => 'Could not reach the Hardcover API.'], 502);
     $response = json_decode($body, true);
     if (!is_array($response) || $httpStatus < 200 || $httpStatus >= 300 || isset($response['errors'])) {
@@ -86,7 +86,7 @@ GRAPHQL;
         CURLOPT_TIMEOUT => 15,
     ]);
     $searchBody = curl_exec($curl);
-    curl_close($curl);
+
     $searchResponse = json_decode((string) $searchBody, true);
     foreach ($searchResponse['data']['search']['results']['hits'] ?? [] as $hit) {
         if ((string) ($hit['document']['id'] ?? '') === (string) $bookId) {

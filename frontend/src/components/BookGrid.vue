@@ -1,4 +1,5 @@
 <template>
+    <!-- Viser kortene i et responsivt grid eller en tom-tilstand uden resultater. -->
     <div v-if="books.length" class="row g-3 g-lg-4">
         <div v-for="book in books" :key="book.id" class="col-6 col-md-4 col-lg-3 col-xl-2">
             <BookCard :book="book"
@@ -12,5 +13,7 @@
 import BookCard from "./BookCard.vue";
 
 defineProps({books: {type: Array, default: () => []}});
+
+// Sender handlinger fra hvert kort videre til komponentens forælder.
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
 </script>
