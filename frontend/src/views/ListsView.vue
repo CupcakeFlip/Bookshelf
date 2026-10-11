@@ -2,7 +2,7 @@
 import Navbar from "@/components/Navbar.vue";
 import BookListRow from "@/components/BookListRow.vue";
 
-// Temporary reading-list data used by this view.
+// Temporary reading-list data used by this view until the lists endpoint is connected.
 const lists = [
     {
         id: 1,
@@ -23,11 +23,16 @@ const lists = [
     }
 ];
 
-/** Receives the selected list; detailed list navigation can be added later. */
+/**
+ * Receives the selected list; detailed list navigation can be added later.
+ *
+ * @param {Object} list Selected list object.
+ * @returns {void}
+ */
 const openList = list => console.log(list);
 </script>
 <template>
-    <!-- Hver liste får sin egen række med et udvalg af bogforsider. -->
+    <!-- Each list is represented by a row containing a limited cover preview. -->
     <Navbar/>
     <main class="container py-4"><h1 class="mb-4">Lists</h1>
         <div class="d-grid gap-3">
@@ -35,3 +40,5 @@ const openList = list => console.log(list);
         </div>
     </main>
 </template>
+
+<style scoped></style>

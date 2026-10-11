@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS book_authors
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
+-- Genres are normalized separately so the same Hardcover tag can be reused by many books.
 CREATE TABLE IF NOT EXISTS genres
 (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS book_genres
 CREATE TABLE IF NOT EXISTS user_books
 (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    -- A single-user installation needs only one status row per book.
     book_id       INT UNSIGNED                                        NOT NULL UNIQUE,
     status        ENUM ('want_to_read', 'reading', 'finished', 'dnf') NOT NULL DEFAULT 'want_to_read',
     rating        TINYINT UNSIGNED                                    NULL,

@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+/**
+ * Popular-books API.
+ *
+ * GET requests Hardcover for trending IDs, fetches their metadata, restores
+ * locally persisted reading statuses, and returns the result in trend order.
+ */
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 const BOOK_LIMIT = 20;
 
@@ -149,7 +155,13 @@ function normalizeBook(array $book): array
     ];
 }
 
-/** Adds locally saved reading statuses with one indexed lookup for the result set. */
+/**
+ * Adds locally saved reading statuses with one indexed lookup for the result set.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param array $books Normalized Hardcover books.
+ * @return array Books enriched with status or null.
+ */
 function enrichStatuses(PDO $pdo, array $books): array
 {
     if ($books === []) return $books;

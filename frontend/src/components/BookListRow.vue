@@ -1,15 +1,3 @@
-<template>
-    <!-- Hele rækken er klikbar, så den fungerer som én tydelig handling for brugeren. -->
-    <button class="book-list-row card w-100 text-start" type="button" @click="emit('open',list)"><span
-        class="book-list-row__title">{{
-            list.title
-        }}</span><span :aria-label="`${preview.length} recent books in ${list.title}`"
-        class="book-list-row__previews"><span
-        v-for="book in preview" :key="book.id" class="book-list-row__cover"><img v-if="book.cover??book.cover_url"
-        :alt="`Cover for ${book.title}`"
-        :src="book.cover??book.cover_url"><span
-        v-else aria-hidden="true">No cover</span></span></span></button>
-</template>
 <script setup>
 import {computed} from "vue";
 
@@ -23,6 +11,20 @@ const emit = defineEmits(["open"]);
 const preview = computed(() => (props.list.recentBooks ?? props.list.previewBooks ?? []).slice(0, props.previewLimit));
 
 </script>
+
+<template>
+    <!-- The whole row is one keyboard-accessible action for opening a list. -->
+    <button class="book-list-row card w-100 text-start" type="button" @click="emit('open',list)"><span
+        class="book-list-row__title">{{
+            list.title
+        }}</span><span :aria-label="`${preview.length} recent books in ${list.title}`"
+        class="book-list-row__previews"><span
+        v-for="book in preview" :key="book.id" class="book-list-row__cover"><img v-if="book.cover??book.cover_url"
+        :alt="`Cover for ${book.title}`"
+        :src="book.cover??book.cover_url"><span
+        v-else aria-hidden="true">No cover</span></span></span></button>
+</template>
+
 <style lang="scss" scoped>
 .book-list-row {
     display: flex;

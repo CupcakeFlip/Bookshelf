@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+/**
+ * Books API.
+ *
+ * GET returns the current user's saved books, POST saves a Hardcover book and
+ * its reading status, and DELETE removes only the user_books association.
+ * Responses are JSON with 200/201 for success, 400/422 for validation errors,
+ * 404 for missing Hardcover books, and 502/503 for upstream/configuration errors.
+ */
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dnf'];
 
@@ -181,6 +189,19 @@ function savedBook(PDO $pdo, int $bookId): array
  *
  * @param PDO $pdo Active database connection.
  * @param array $book Normalized Hardcover book data.
+ * @return array The saved book.
+ * @throws Throwable When a database operation fails.
+ */
+/**
+ * Saves a Hardcover book and its relationships in one transaction.
+ *
+ * Existing canonical books are reused by external_api_id. Series, authors,
+ * genres, and user_books are then linked without changing the public response
+ * shape used by the Vue components.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param array $book Normalized Hardcover book data.
+ * @param string $status Valid reading status.
  * @return array The saved book.
  * @throws Throwable When a database operation fails.
  */

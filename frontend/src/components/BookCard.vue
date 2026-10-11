@@ -1,5 +1,137 @@
+<script setup>
+import {computed, ref} from "vue";
+import {removeBookStatus, saveBookStatus} from "@/api/books";
+
+const isFlipped = ref(false);
+const isMenuOpen = ref(false);
+const pending = ref(false);
+const errorMessage = ref("");
+
+/**
+ * Book data supplied by a view or by the PHP API.
+ *
+ * @typedef {Object} BookCardData
+ * @property {string|number} hardcover_id Stable Hardcover identifier.
+ * @property {string} title Display title.
+ * @property {string} [cover_url] Optional cover image URL.
+ * @property {Array<string|{name?: string}>} [authors] Author names or API objects.
+ * @property {{name?: string, position?: number|string}|string} [series] Series metadata.
+ * @property {string|null} [status] Current locally persisted reading status.
+ */
+/** @type {{book: BookCardData}} */
+const props = defineProps({book: {type: Object, required: true}});
+/** User actions that the parent view can handle. */
+const emit = defineEmits(["open", "status-change", "add-to-list"]);
+const statusOptions = [
+    {value: null, label: "Not in library"},
+    {value: "want_to_read", label: "Want to read"},
+    {value: "reading", label: "Reading"},
+    {value: "finished", label: "Finished"},
+    {value: "dnf", label: "Did not finish"},
+];
+const currentStatus = computed(() => props.book.status ?? null);
+
+// Normalize possible API field names before displaying the book.
+const cover_url = computed(() => props.book.cover_url ?? "");
+const authors = computed(() =>
+    Array.isArray(props.book.authors)
+        ? props.book.authors
+            .map((a) => (typeof a === "string" ? a : a?.name))
+            .filter(Boolean)
+            .join(", ")
+        : (props.book.authors ?? props.book.author ?? ""),
+);
+const name = computed(
+    () =>
+        props.book.series?.name ??
+        props.book.seriesName ??
+        (typeof props.book.series === "string" ? props.book.series : ""),
+);
+const position = computed(
+    () => props.book.series?.position ?? props.book.seriesPosition,
+);
+const seriesText = computed(() =>
+    name.value
+        ? name.value + (position.value ? " #" + Number(position.value, 1) : "")
+        : "",
+);
+
+const description = computed(() => props.book.description ?? "");
+
+// Normalize status spelling so the same status always gets the same label and style.
+const normalized = computed(() =>
+    String(props.book.status ?? "")
+        .toLowerCase()
+        .trim()
+        .replaceAll("_", "-")
+        .replaceAll(" ", "-"),
+);
+const statusClass = computed(
+    () =>
+        ({
+            "want-to-read": "status-want-read",
+            "want-read": "status-want-read",
+            reading: "status-reading",
+            finished: "status-finished",
+            read: "status-finished",
+            paused: "status-paused",
+            dnf: "status-dnf",
+        })[normalized.value] ?? "status-want-read",
+);
+const statusLabel = computed(
+    () =>
+        ({
+            "want-to-read": "Want to read",
+            "want-read": "Want to read",
+            reading: "Reading",
+            finished: "Finished",
+            read: "Finished",
+            paused: "Paused",
+            dnf: "DNF",
+        })[normalized.value] ?? "Not in library",
+);
+const statusButtonClass = computed(() => currentStatus.value
+    ? `btn-status btn-${statusClass.value.replace("status-", "")}`
+    : "btn-status btn-not-in-library");
+
+/**
+ * Persists a status change and reports the updated book to the parent grid.
+ *
+ * @param {"want_to_read"|"reading"|"finished"|"dnf"|null} status
+ *        New status, or null to remove the book from the library.
+ * @returns {Promise<void>}
+ */
+async function selectStatus(status) {
+    if (pending.value || status === currentStatus.value) {
+        isMenuOpen.value = false;
+        return;
+    }
+    const previous = currentStatus.value;
+    pending.value = true;
+    errorMessage.value = "";
+    isMenuOpen.value = false;
+    try {
+        const saved = status === null ? await removeBookStatus(props.book) : await saveBookStatus(props.book, status);
+        emit("status-change", {book: saved.status === undefined ? {...props.book, status} : saved, status, previous});
+    } catch (error) {
+        errorMessage.value = error.message;
+    } finally {
+        pending.value = false;
+    }
+}
+
+/**
+ * Uses the primary status button as a shortcut for adding an untracked book.
+ *
+ * @returns {void}
+ */
+function mainStatusAction() {
+    if (currentStatus.value === null) selectStatus("want_to_read");
+}
+</script>
+
 <template>
-    <!-- Kortets hovedhandling åbner bogen, mens den separate knap tilføjer den til en liste. -->
+    <!-- The card exposes book details, status controls, and a separate list action. -->
     <article :class="{ 'dropdown-open': isMenuOpen }" class="book-card h-100">
         <div
             :class="{ 'is-flipped': isFlipped }"
@@ -103,114 +235,7 @@
         <p v-if="errorMessage" class="small text-danger px-2 mb-2" role="alert">{{ errorMessage }}</p>
     </article>
 </template>
-<script setup>
-import {computed, ref} from "vue";
-import {removeBookStatus, saveBookStatus} from "@/api/books";
 
-const isFlipped = ref(false);
-const isMenuOpen = ref(false);
-const pending = ref(false);
-const errorMessage = ref("");
-
-/** Book data used to populate the card. */
-const props = defineProps({book: {type: Object, required: true}});
-/** User actions that the parent view can handle. */
-const emit = defineEmits(["open", "status-change", "add-to-list"]);
-const statusOptions = [
-    {value: null, label: "Not in library"},
-    {value: "want_to_read", label: "Want to read"},
-    {value: "reading", label: "Reading"},
-    {value: "finished", label: "Finished"},
-    {value: "dnf", label: "Did not finish"},
-];
-const currentStatus = computed(() => props.book.status ?? null);
-
-// Normalize possible API field names before displaying the book.
-const cover_url = computed(() => props.book.cover_url ?? "");
-const authors = computed(() =>
-    Array.isArray(props.book.authors)
-        ? props.book.authors
-            .map((a) => (typeof a === "string" ? a : a?.name))
-            .filter(Boolean)
-            .join(", ")
-        : (props.book.authors ?? props.book.author ?? ""),
-);
-const name = computed(
-    () =>
-        props.book.series?.name ??
-        props.book.seriesName ??
-        (typeof props.book.series === "string" ? props.book.series : ""),
-);
-const position = computed(
-    () => props.book.series?.position ?? props.book.seriesPosition,
-);
-const seriesText = computed(() =>
-    name.value
-        ? name.value + (position.value ? " #" + Number(position.value, 1) : "")
-        : "",
-);
-
-const description = computed(() => props.book.description ?? "");
-
-// Normalize status spelling so the same status always gets the same label and style.
-const normalized = computed(() =>
-    String(props.book.status ?? "")
-        .toLowerCase()
-        .trim()
-        .replaceAll("_", "-")
-        .replaceAll(" ", "-"),
-);
-const statusClass = computed(
-    () =>
-        ({
-            "want-to-read": "status-want-read",
-            "want-read": "status-want-read",
-            reading: "status-reading",
-            finished: "status-finished",
-            read: "status-finished",
-            paused: "status-paused",
-            dnf: "status-dnf",
-        })[normalized.value] ?? "status-want-read",
-);
-const statusLabel = computed(
-    () =>
-        ({
-            "want-to-read": "Want to read",
-            "want-read": "Want to read",
-            reading: "Reading",
-            finished: "Finished",
-            read: "Finished",
-            paused: "Paused",
-            dnf: "DNF",
-        })[normalized.value] ?? "Not in library",
-);
-const statusButtonClass = computed(() => currentStatus.value
-    ? `btn-status btn-${statusClass.value.replace("status-", "")}`
-    : "btn-status btn-not-in-library");
-
-async function selectStatus(status) {
-    if (pending.value || status === currentStatus.value) {
-        isMenuOpen.value = false;
-        return;
-    }
-    const previous = currentStatus.value;
-    pending.value = true;
-    errorMessage.value = "";
-    isMenuOpen.value = false;
-    try {
-        const saved = status === null ? await removeBookStatus(props.book) : await saveBookStatus(props.book, status);
-        emit("status-change", {book: saved.status === undefined ? {...props.book, status} : saved, status, previous});
-    } catch (error) {
-        errorMessage.value = error.message;
-    } finally {
-        pending.value = false;
-    }
-}
-
-function mainStatusAction() {
-    if (currentStatus.value === null) selectStatus("want_to_read");
-}
-</script>
 <style lang="scss" scoped>
 
 h2 {

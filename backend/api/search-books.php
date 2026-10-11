@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
-// This endpoint searches the Hardcover API for books matching the user's query.
-// It validates the request, calls the external API, normalizes the response,
-// and then returns a clean JSON structure to the frontend.
+/**
+ * Search-books API.
+ *
+ * GET requires a non-empty q parameter, searches Hardcover, enriches each hit
+ * with description/genre details, and returns normalized books plus metadata.
+ */
 
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 

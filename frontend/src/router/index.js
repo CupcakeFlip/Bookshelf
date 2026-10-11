@@ -5,6 +5,7 @@ import LibraryView from "@/views/LibraryView.vue";
 import StatsView from "@/views/StatsView.vue";
 
 // Define the client-side pages without full browser reloads.
+// Each route maps directly to a view; the PHP API is called by those views/components.
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [

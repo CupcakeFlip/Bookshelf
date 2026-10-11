@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 /**
+ * Lists API: GET reads lists, POST creates, PUT/PATCH updates, and DELETE removes.
+ * Responses are JSON with validation errors reported as 400/422 and missing
+ * records as 404.
+ */
+
+/**
  * Sends a JSON response and stops execution immediately.
  *
  * @param array $payload Response data.
@@ -19,6 +25,10 @@ function respond(array $payload, int $status = 200): never
 
 /**
  * Reads and validates a positive integer from a request value.
+ *
+ * @param mixed $value Raw query or JSON value.
+ * @param string $field Field name used in validation errors.
+ * @return int Validated positive integer.
  */
 function positiveId(mixed $value, string $field): int
 {
@@ -29,6 +39,8 @@ function positiveId(mixed $value, string $field): int
 
 /**
  * Reads a JSON request body.
+ *
+ * @return array Decoded request object.
  */
 function requestBody(): array
 {
@@ -38,7 +50,11 @@ function requestBody(): array
 }
 
 /**
- * Loads one list and its books.
+ * Loads one list and its books through the book_lists relation.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param int $listId Local list identifier.
+ * @return array List data with normalized title and book_count fields.
  */
 function savedList(PDO $pdo, int $listId): array
 {
@@ -64,6 +80,10 @@ function savedList(PDO $pdo, int $listId): array
 
 /**
  * Validates book IDs before a list transaction begins.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param array $bookIds Candidate local book IDs.
+ * @return array Unique, validated local book IDs.
  */
 function validatedBookIds(PDO $pdo, array $bookIds): array
 {
@@ -86,6 +106,14 @@ function validatedBookIds(PDO $pdo, array $bookIds): array
 
 /**
  * Replaces the books in a list with already validated IDs.
+ *
+ * The caller owns the surrounding transaction so list metadata and relation
+ * rows are committed or rolled back together.
+ *
+ * @param PDO $pdo Active database connection.
+ * @param int $listId Local list identifier.
+ * @param array $bookIds Validated local book IDs.
+ * @return void
  */
 function replaceListBooks(PDO $pdo, int $listId, array $bookIds): void
 {

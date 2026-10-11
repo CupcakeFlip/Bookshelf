@@ -1,5 +1,6 @@
 services:
   php:
+    # Apache serves the PHP API; the backend is mounted for local development.
     build:
       context: .
       dockerfile: _docker/php/Dockerfile
@@ -17,6 +18,7 @@ services:
       HARDCOVER_API_TOKEN: ${HARDCOVER_API_TOKEN:-}
     depends_on:
       mariadb:
+        # The schema is applied on first initialization and data persists in the named volume.
         condition: service_healthy
     networks:
       - bookshelf
@@ -44,6 +46,7 @@ services:
       - bookshelf
 
   phpmyadmin:
+    # Optional database administration UI connected to the internal MariaDB service.
     image: phpmyadmin:5.2.2-apache
     container_name: bookshelf-phpmyadmin
     restart: unless-stopped

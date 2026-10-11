@@ -1,5 +1,15 @@
+<script setup>
+import BookCard from "./BookCard.vue";
+
+/** Books displayed as cards in the responsive grid. */
+defineProps({ books: { type: Array, default: () => [] } });
+
+/** Events emitted by a card and forwarded to the parent view. */
+const emit = defineEmits(["open", "status-change", "add-to-list"]);
+</script>
+
 <template>
-    <!-- Viser kortene i et responsivt grid eller en tom-tilstand uden resultater. -->
+    <!-- Render cards in a responsive grid, or explain that the current filter is empty. -->
     <div v-if="books.length" class="row g-3 g-lg-4">
         <div
             v-for="book in books"
@@ -18,12 +28,5 @@
         No books match your selection.
     </p>
 </template>
-<script setup>
-import BookCard from "./BookCard.vue";
 
-/** Books displayed as cards in the responsive grid. */
-defineProps({ books: { type: Array, default: () => [] } });
-
-/** Events emitted by a card and forwarded to the parent view. */
-const emit = defineEmits(["open", "status-change", "add-to-list"]);
-</script>
+<style scoped></style>

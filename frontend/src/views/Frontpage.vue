@@ -1,10 +1,11 @@
 <script setup>
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
 
-/** @type {import('vue').Ref<string>} */
+/** @type {import('vue').Ref<string>} Search text entered by the user. */
 const query = ref("");
+/** @type {import('vue').Ref<string>} Selected genre filter, or an empty string. */
 const genre = ref("");
 
 /**
@@ -12,12 +13,19 @@ const genre = ref("");
  * @property {number} id
  * @property {string} title
  * @property {{name: string}[]} authors
- * @property {{name: string}[]} genres
+ * @property {{name: string, slug?: string}[]} genres
+ * @property {string|null} [status]
  */
 
 /** @type {import('vue').Ref<Book[]>} */
 const books = ref([]);
 
+/**
+ * Replaces a locally displayed book after BookCard reports a persisted status.
+ *
+ * @param {{book: Book}} change Status-change event emitted by BookGrid.
+ * @returns {void}
+ */
 function updateBook({book}) {
     const index = books.value.findIndex(item => item.hardcover_id === book.hardcover_id);
     if (index >= 0) books.value[index] = book;
@@ -29,6 +37,11 @@ function updateBook({book}) {
  */
 
 
+/**
+ * Loads the current popular catalogue from the PHP endpoint.
+ *
+ * @returns {Promise<void>}
+ */
 async function fetchBooks() {
     const response = await fetch("/api/popular-books.php");
     books.value = await response.json();
@@ -36,10 +49,12 @@ async function fetchBooks() {
 
 onMounted(() => {
     fetchBooks();
+    window.addEventListener("bookshelf:books-synced", fetchBooks);
     console.log(books);
 });
+onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBooks));
 
-/** Builds a unique list of genre names from the available books. */
+/** Builds a unique, sorted list of genre names from the available books. */
 const genres = computed(() => [
         ...new Set(
             books.value.flatMap((book) =>
@@ -49,7 +64,7 @@ const genres = computed(() => [
     ].sort()
 );
 
-/** Filters books by the search text and selected genre. */
+/** Filters books by the search text and selected genre before rendering BookGrid. */
 const filteredBooks = computed(() =>
     books.value.filter(
         (book) =>
@@ -64,7 +79,7 @@ const filteredBooks = computed(() =>
 );
 </script>
 <template>
-    <!-- Søgning og genrefilter er bundet til reaktive værdier og opdaterer grid'et automatisk. -->
+    <!-- Reactive filters update the same normalized books that BookGrid passes to BookCard. -->
     <Navbar/>
     <main class="container py-4">
         <div class="mb-4">
@@ -100,3 +115,5 @@ const filteredBooks = computed(() =>
         <BookGrid :books="filteredBooks" @status-change="updateBook"/>
     </main>
 </template>
+
+<style scoped></style>

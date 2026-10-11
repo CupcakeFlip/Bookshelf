@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../classes/Database.php';
 
+/** Read database settings from the Docker environment, with local defaults. */
 // Read local Docker database settings from the environment.
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 $port = getenv('DB_PORT') ?: '3306';

@@ -2,7 +2,7 @@ import {fileURLToPath, URL} from 'node:url';
 import {defineConfig} from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-// https://vitejs.dev/config/
+// The alias keeps imports independent of the component's relative directory.
 export default defineConfig({
     plugins: [
         vue(),
@@ -13,6 +13,7 @@ export default defineConfig({
         }
     },
     server: {
+        // During local development, forward browser API calls to Apache/PHP.
         proxy: {
             '/api': {
                 target: 'http://localhost:8000',
