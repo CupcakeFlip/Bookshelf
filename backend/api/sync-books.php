@@ -51,16 +51,23 @@ function normalizeBook(array $book): array
     $authors = [];
     foreach ($book['contributions'] ?? [] as $contribution) {
         $author = $contribution['author'] ?? null;
-        if (is_array($author) && !empty($author['name'])) $authors[(string)($author['id'] ?? $author['name'])] = ['id' => $author['id'] ?? null, 'name' => $author['name']];
+        if (is_array($author) && !empty($author['name'])) $authors[(string)($author['id'] ?? $author['name'])] =
+            ['id' => $author['id'] ?? null, 'name' => $author['name']];
     }
     $series = null;
     $relation = $book['book_series'][0] ?? null;
     if (is_array($relation) && is_array($relation['series'] ?? null) && !empty($relation['series']['name'])) {
-        $series = ['id' => $relation['series']['id'] ?? null, 'name' => $relation['series']['name'], 'position' => $relation['position'] ?? null];
+        $series =
+            [
+                'id' => $relation['series']['id'] ?? null,
+                'name' => $relation['series']['name'],
+                'position' => $relation['position'] ?? null
+            ];
     }
     $genres = [];
     foreach (($book['cached_tags']['Genre'] ?? []) as $genre) {
-        if (is_array($genre) && !empty($genre['tag']) && !empty($genre['tagSlug'])) $genres[$genre['tagSlug']] = ['name' => $genre['tag'], 'slug' => $genre['tagSlug']];
+        if (is_array($genre) && !empty($genre['tag']) && !empty($genre['tagSlug'])) $genres[$genre['tagSlug']] =
+            ['name' => $genre['tag'], 'slug' => $genre['tagSlug']];
     }
     return [
         'hardcover_id' => (string)$book['id'],
@@ -86,19 +93,33 @@ function normalizeBook(array $book): array
 function hardcoverRequest(string $query, array $variables, string $token): array
 {
     $curl = curl_init(HARDCOVER_API_URL);
-    curl_setopt_array($curl, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['query' => $query, 'variables' => $variables]),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Accept: application/json', 'Authorization: Bearer ' . $token, 'Content-Type: application/json'],
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT => 20,
-    ]);
+    curl_setopt_array(
+        $curl,
+        [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(['query' => $query, 'variables' => $variables]),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json'
+            ],
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 20,
+        ]
+    );
     $body = curl_exec($curl);
     $httpStatus = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
     $response = is_string($body) ? json_decode($body, true) : null;
-    if ($body === false || $httpStatus < 200 || $httpStatus >= 300 || !is_array($response) || !empty($response['errors'])) throw new RuntimeException('Hardcover request failed.');
-    return is_array($response['data'] ?? null) ? $response['data'] : throw new RuntimeException('Invalid Hardcover response.');
+    if (
+        $body === false ||
+        $httpStatus < 200 ||
+        $httpStatus >= 300 ||
+        !is_array($response) ||
+        !empty($response['errors'])
+    ) throw new RuntimeException('Hardcover request failed.');
+    return is_array($response['data'] ?? null) ? $response['data'] :
+        throw new RuntimeException('Invalid Hardcover response.');
 }
 
 /**
@@ -106,23 +127,101 @@ function hardcoverRequest(string $query, array $variables, string $token): array
  *
  * @param PDO $pdo Active database connection.
  * @param array $book Normalized Hardcover book.
- * @return void
+ * @return bool True when at least one persisted field or relationship changed.
  * @throws RuntimeException If the local book no longer exists.
  * @throws Throwable If the transaction fails.
  */
-function updateBook(PDO $pdo, array $book): void
+function updateBook(PDO $pdo, array $book): bool
 {
-    $stmt = $pdo->prepare('SELECT id, series_id FROM books WHERE external_api_id = ?');
+    $stmt =
+        $pdo->prepare(
+            'SELECT b.*, s.external_api_id AS series_external_api_id, s.name AS series_name FROM books b LEFT JOIN series s ON s.id = b.series_id WHERE b.external_api_id = ?'
+        );
     $stmt->execute([$book['hardcover_id']]);
     $local = $stmt->fetch();
     if (!$local) throw new RuntimeException('Book no longer exists.');
+    $stmt =
+        $pdo->prepare(
+            'SELECT a.external_api_id, a.name FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = ? ORDER BY a.external_api_id, a.name'
+        );
+    $stmt->execute([$local['id']]);
+    $localAuthors =
+        array_map(
+            static fn(array $author): array => [
+                'id' => (string)$author['external_api_id'],
+                'name' => $author['name']
+            ],
+            $stmt->fetchAll()
+        );
+    $stmt =
+        $pdo->prepare(
+            'SELECT g.slug, g.name FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ? ORDER BY g.slug, g.name'
+        );
+    $stmt->execute([$local['id']]);
+    $localGenres = $stmt->fetchAll();
+    $remoteAuthors = $book['authors'];
+    usort(
+        $remoteAuthors,
+        static fn(array $a, array $b): int => strcmp(($a['id'] ?? '') . $a['name'], ($b['id'] ?? '') . $b['name'])
+    );
+    $remoteGenres = $book['genres'];
+    usort(
+        $remoteGenres,
+        static fn(array $a, array $b): int => strcmp($a['slug'] . $a['name'], $b['slug'] . $b['name'])
+    );
+    $scalarChanges =
+        ($book['title'] !== null && $book['title'] !== '' && $book['title'] !== $local['title']
+        ) ||
+        ($book['description'] !== null && $book['description'] !== '' && $book['description'] !== $local['description']
+        ) ||
+        ($book['cover_url'] !== null && $book['cover_url'] !== '' && $book['cover_url'] !== $local['cover_url']
+        ) ||
+        ($book['release_date'] !== null &&
+            $book['release_date'] !== '' &&
+            $book['release_date'] !== $local['release_date']);
+    $seriesChanged =
+        is_array($book['series']) &&
+        $book['series']['id'] !== null &&
+        (
+            (string)$book['series']['id'] !==
+            (string)($local['series_external_api_id'] ?? '') ||
+            $book['series']['name'] !==
+            ($local['series_name'] ?? '') ||
+            (
+                $book['series']['position'] !==
+                null &&
+                (string)$book['series']['position'] !==
+                (string)($local['series_position'] ??
+                    '')
+            ));
+    $authorsChanged =
+        $remoteAuthors !==
+        [] &&
+        $remoteAuthors !==
+        $localAuthors;
+
+    $genresChanged =
+        $remoteGenres !==
+        [] &&
+        $remoteGenres !==
+        $localGenres;
+
+    if (!$scalarChanges && !$seriesChanged && !$authorsChanged && !$genresChanged) return false;
     $pdo->beginTransaction();
     try {
         $seriesId = $local['series_id'];
-        if (is_array($book['series']) && $book['series']['id'] !== null && $book['series']['name'] !== '') {
+        if (
+            is_array($book['series']) &&
+            $book['series']['id'] !== null &&
+            $book['series']['name'] !==
+            ''
+        ) {
             $stmt = $pdo->prepare('SELECT id FROM series WHERE external_api_id = ?');
+
             $stmt->execute([(string)$book['series']['id']]);
+
             $seriesId = $stmt->fetchColumn();
+
             if (!$seriesId) {
                 $stmt = $pdo->prepare('INSERT INTO series (external_api_id, name) VALUES (?, ?)');
                 $stmt->execute([(string)$book['series']['id'], $book['series']['name']]);
@@ -131,8 +230,18 @@ function updateBook(PDO $pdo, array $book): void
                 $pdo->prepare('UPDATE series SET name = ? WHERE id = ?')->execute([$book['series']['name'], $seriesId]);
             }
         }
-        $fields = ['title = COALESCE(NULLIF(?, \'\'), title)', 'description = COALESCE(NULLIF(?, \'\'), description)', 'cover_url = COALESCE(NULLIF(?, \'\'), cover_url)', 'release_date = COALESCE(NULLIF(?, \'\'), release_date)'];
-        $params = [$book['title'], $book['description'], $book['cover_url'], $book['release_date']];
+        $fields = [
+            'title = COALESCE(NULLIF(?, \'\'), title)',
+            'description = COALESCE(NULLIF(?, \'\'), description)',
+            'cover_url = COALESCE(NULLIF(?, \'\'), cover_url)',
+            'release_date = COALESCE(NULLIF(?, \'\'), release_date)'
+        ];
+        $params = [
+            $book['title'],
+            $book['description'],
+            $book['cover_url'],
+            $book['release_date']
+        ];
         if ($seriesId !== null) {
             $fields[] = 'series_id = ?';
             $params[] = $seriesId;
@@ -142,8 +251,12 @@ function updateBook(PDO $pdo, array $book): void
             }
         }
         $params[] = $local['id'];
-        $pdo->prepare('UPDATE books SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
-        if ($book['authors'] !== []) {
+        if ($scalarChanges || $seriesChanged) $pdo->prepare(
+            'UPDATE books SET ' .
+            implode(', ', $fields) .
+            ' WHERE id = ?'
+        )->execute($params);
+        if ($authorsChanged) {
             $pdo->prepare('DELETE FROM book_authors WHERE book_id = ?')->execute([$local['id']]);
             foreach ($book['authors'] as $author) {
                 if ($author['id'] === null) continue;
@@ -155,10 +268,12 @@ function updateBook(PDO $pdo, array $book): void
                     $stmt->execute([(string)$author['id'], $author['name']]);
                     $authorId = $pdo->lastInsertId();
                 }
-                $pdo->prepare('INSERT IGNORE INTO book_authors (book_id, author_id) VALUES (?, ?)')->execute([$local['id'], $authorId]);
+                $pdo
+                    ->prepare('INSERT IGNORE INTO book_authors (book_id, author_id) VALUES (?, ?)')
+                    ->execute([$local['id'], $authorId]);
             }
         }
-        if ($book['genres'] !== []) {
+        if ($genresChanged) {
             $pdo->prepare('DELETE FROM book_genres WHERE book_id = ?')->execute([$local['id']]);
             foreach ($book['genres'] as $genre) {
                 $stmt = $pdo->prepare('SELECT id FROM genres WHERE slug = ?');
@@ -169,10 +284,13 @@ function updateBook(PDO $pdo, array $book): void
                     $stmt->execute([$genre['name'], $genre['slug']]);
                     $genreId = $pdo->lastInsertId();
                 }
-                $pdo->prepare('INSERT IGNORE INTO book_genres (book_id, genre_id) VALUES (?, ?)')->execute([$local['id'], $genreId]);
+                $pdo
+                    ->prepare('INSERT IGNORE INTO book_genres (book_id, genre_id) VALUES (?, ?)')
+                    ->execute([$local['id'], $genreId]);
             }
         }
         $pdo->commit();
+        return true;
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $exception;
@@ -180,39 +298,69 @@ function updateBook(PDO $pdo, array $book): void
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') respond(['error' => 'Method not allowed.'], 405);
-if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'XMLHttpRequest') respond(['error' => 'This action must be initiated by the application.'], 403);
+if (
+    ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !==
+    'XMLHttpRequest'
+) respond(['error' => 'This action must be initiated by the application.'], 403);
 $origin = $_SERVER['HTTP_ORIGIN'] ?? null;
-if ($origin !== null && parse_url($origin, PHP_URL_HOST) !== ($_SERVER['HTTP_HOST'] ?? null)) respond(['error' => 'Invalid request origin.'], 403);
+$originHost = $origin !== null ? parse_url($origin, PHP_URL_HOST) : null;
+$requestHost = parse_url(
+    'http://' . ($_SERVER['HTTP_HOST'] ?? ''),
+    PHP_URL_HOST
+);
+
+if ($origin !== null && $originHost !== $requestHost) {
+    respond(['error' => 'Invalid request origin.'], 403);
+}
 $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') respond(['error' => 'Hardcover API is not configured.'], 503);
 $lock = fopen(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bookshelf-hardcover-sync.lock', 'c+');
-if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) respond(['error' => 'A synchronization is already running.'], 409);
+if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) respond(
+    ['error' => 'A synchronization is already running.'],
+    409
+);
 $pdo = require __DIR__ . '/../settings/init.php';
-$rows = $pdo->query("SELECT id, external_api_id FROM books WHERE external_api_id IS NOT NULL AND external_api_id <> '' ORDER BY id")->fetchAll();
-$result = ['total' => count($rows), 'updated' => 0, 'failed' => 0, 'errors' => []];
+$rows =
+    $pdo
+        ->query(
+            "SELECT id, external_api_id FROM books WHERE external_api_id IS NOT NULL AND external_api_id <> '' ORDER BY id"
+        )
+        ->fetchAll();
+$result = ['total' => count($rows), 'updated' => 0, 'unchanged' => 0, 'failed' => 0, 'errors' => []];
 $query = <<<'GRAPHQL'
 query SyncBooks($ids: [Int!]!) { books(where: {id: {_in: $ids}}) { id title description release_date cached_image(path: "url") cached_tags contributions { author { id name } } book_series { position series { id name } } } }
 GRAPHQL;
 foreach (array_chunk($rows, SYNC_BATCH_SIZE) as $batch) {
     try {
-        $ids = array_values(array_filter(array_map(static fn(array $row): int => (int)$row['external_api_id'], $batch), static fn(int $id): bool => $id > 0));
+        $ids =
+            array_values(
+                array_filter(
+                    array_map(static fn(array $row): int => (int)$row['external_api_id'], $batch),
+                    static fn(int $id): bool => $id > 0
+                )
+            );
         $data = hardcoverRequest($query, ['ids' => $ids], $token);
         $byId = [];
-        foreach ($data['books'] ?? [] as $raw) if (is_array($raw) && isset($raw['id'])) $byId[(string)$raw['id']] = normalizeBook($raw);
+        foreach ($data['books'] ?? [] as $raw)
+            if (is_array($raw) && isset($raw['id'])) $byId[(string)$raw['id']] = normalizeBook($raw);
         foreach ($batch as $row) {
             try {
-                if (!isset($byId[(string)$row['external_api_id']])) throw new RuntimeException('Hardcover book was not found.');
-                updateBook($pdo, $byId[(string)$row['external_api_id']]);
-                $result['updated']++;
+                if (!isset($byId[(string)$row['external_api_id']])) throw new RuntimeException(
+                    'Hardcover book was not found.'
+                );
+                if (updateBook($pdo, $byId[(string)$row['external_api_id']])) $result['updated']++;
+                else $result['unchanged']++;
             } catch (Throwable $exception) {
                 $result['failed']++;
-                $result['errors'][] = ['hardcover_id' => (string)$row['external_api_id'], 'error' => $exception->getMessage()];
+                $result['errors'][] =
+                    ['hardcover_id' => (string)$row['external_api_id'], 'error' => $exception->getMessage()];
             }
         }
     } catch (Throwable $exception) {
         foreach ($batch as $row) {
             $result['failed']++;
-            $result['errors'][] = ['hardcover_id' => (string)$row['external_api_id'], 'error' => 'Batch request failed.'];
+            $result['errors'][] =
+                ['hardcover_id' => (string)$row['external_api_id'], 'error' => 'Batch request failed.'];
         }
     }
 }

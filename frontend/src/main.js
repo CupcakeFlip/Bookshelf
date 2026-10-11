@@ -3,6 +3,7 @@ import App from '@/App.vue';
 import router from '@/router/index';
 
 import './assets/css/styles.scss';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 import {Popover} from 'bootstrap';
 
