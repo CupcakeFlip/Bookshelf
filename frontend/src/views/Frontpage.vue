@@ -18,8 +18,15 @@ const genre = ref("");
 /** @type {import('vue').Ref<Book[]>} */
 const books = ref([]);
 
+
+/**
+ * TODO: Fetch books from hardcover API and store them in the `books` ref.
+ * TODO: Make pagination work by fetching only a limited number of books at a time and updating the `books` ref accordingly.
+ */
+
+
 async function fetchBooks() {
-    const response = await fetch("/api/books.php");
+    const response = await fetch("/api/popular-books.php");
     books.value = await response.json();
 }
 
