@@ -43,7 +43,7 @@ async function syncBooks() {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok && response.status !== 207) {
-            showToast(data.error || "Synchronization failed.", "danger");
+            await showToast(data.error || "Synchronization failed.", "danger");
             return;
         }
 
@@ -57,12 +57,12 @@ async function syncBooks() {
                 : updated === 0
                     ? "info"
                     : "success";
-        showToast(`${updated} updated, ${unchanged} unchanged, ${failed} failed.`, variant);
+        await showToast(`${updated} updated, ${unchanged} unchanged, ${failed} failed.`, variant);
 
         if (updated > 0) window.dispatchEvent(new CustomEvent("bookshelf:books-synced"));
 
     } catch (error) {
-        showToast(error instanceof Error
+        await showToast(error instanceof Error
             ? error.message
             : "An unexpected error occurred.", "danger");
 
@@ -109,18 +109,25 @@ async function showToast(message, variant) {
                             title="Sync with Hardcover"
                             type="button"
                             @click="syncBooks">
-                            <i :class="{ 'sync-icon--spinning': syncing }" aria-hidden="true" class="bi bi-arrow-clockwise sync-icon"/>
+                            <i :class="{ 'sync-icon--spinning': syncing }"
+                                aria-hidden="true"
+                                class="bi bi-arrow-clockwise sync-icon"/>
                         </button>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
-    <div aria-atomic="true" aria-live="polite" class="toast-container position-fixed top-0 end-0 p-3 sync-toast-container">
+    <div aria-atomic="true"
+        aria-live="polite"
+        class="toast-container position-fixed top-0 end-0 p-3 sync-toast-container">
         <div ref="toastElement" :class="`text-bg-${toastVariant}`" class="toast border-0" role="status">
             <div class="d-flex">
                 <div class="toast-body">{{ toastMessage }}</div>
-                <button aria-label="Close" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" type="button"/>
+                <button aria-label="Close"
+                    class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast"
+                    type="button"/>
             </div>
         </div>
     </div>
@@ -141,10 +148,14 @@ async function showToast(message, variant) {
 }
 
 @keyframes sync-rotate {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sync-icon--spinning { animation: none; }
+    .sync-icon--spinning {
+        animation: none;
+    }
 }
 </style>

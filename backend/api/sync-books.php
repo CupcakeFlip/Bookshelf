@@ -122,6 +122,49 @@ function hardcoverRequest(string $query, array $variables, string $token): array
         throw new RuntimeException('Invalid Hardcover response.');
 }
 
+/** Returns a deterministic author representation matching the persisted join data. */
+function comparableAuthors(array $authors): array
+{
+    $normalized = [];
+    foreach ($authors as $author) {
+        $id = trim((string)($author['id'] ?? ''));
+        $name = trim((string)($author['name'] ?? ''));
+        // Authors without an external ID cannot be persisted by updateBook().
+        if ($id === '' || $name === '') continue;
+        $normalized[] = ['id' => $id, 'name' => $name];
+    }
+    usort($normalized, static fn(array $a, array $b): int => [$a['id'], $a['name']] <=> [$b['id'], $b['name']]);
+    return $normalized;
+}
+
+/** Returns a deterministic genre representation with stable associative keys. */
+function comparableGenres(array $genres): array
+{
+    $normalized = [];
+    foreach ($genres as $genre) {
+        $slug = trim((string)($genre['slug'] ?? ''));
+        $name = trim((string)($genre['name'] ?? ''));
+        if ($slug === '' || $name === '') continue;
+        $normalized[] = ['slug' => $slug, 'name' => $name];
+    }
+    usort($normalized, static fn(array $a, array $b): int => [$a['slug'], $a['name']] <=> [$b['slug'], $b['name']]);
+    return $normalized;
+}
+
+/** Compares values as persisted strings, avoiding numeric/string representation noise. */
+function comparableValue(mixed $value): ?string
+{
+    if ($value === null || $value === '') return null;
+    return trim((string)$value);
+}
+
+/** Compares decimal series positions by numeric value rather than formatting. */
+function comparablePosition(mixed $value): ?string
+{
+    $value = comparableValue($value);
+    return $value === null ? null : number_format((float)$value, 6, '.', '');
+}
+
 /**
  * Updates one existing book and its metadata joins without touching user_books.
  *
@@ -145,66 +188,45 @@ function updateBook(PDO $pdo, array $book): bool
             'SELECT a.external_api_id, a.name FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = ? ORDER BY a.external_api_id, a.name'
         );
     $stmt->execute([$local['id']]);
-    $localAuthors =
-        array_map(
-            static fn(array $author): array => [
-                'id' => (string)$author['external_api_id'],
-                'name' => $author['name']
-            ],
-            $stmt->fetchAll()
-        );
+    $localAuthors = comparableAuthors(array_map(
+        static fn(array $author): array => ['id' => $author['external_api_id'], 'name' => $author['name']],
+        $stmt->fetchAll()
+    ));
     $stmt =
         $pdo->prepare(
             'SELECT g.slug, g.name FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ? ORDER BY g.slug, g.name'
         );
     $stmt->execute([$local['id']]);
-    $localGenres = $stmt->fetchAll();
-    $remoteAuthors = $book['authors'];
-    usort(
-        $remoteAuthors,
-        static fn(array $a, array $b): int => strcmp(($a['id'] ?? '') . $a['name'], ($b['id'] ?? '') . $b['name'])
-    );
-    $remoteGenres = $book['genres'];
-    usort(
-        $remoteGenres,
-        static fn(array $a, array $b): int => strcmp($a['slug'] . $a['name'], $b['slug'] . $b['name'])
-    );
+    $localGenres = comparableGenres($stmt->fetchAll());
+    $remoteAuthors = comparableAuthors($book['authors']);
+    $remoteGenres = comparableGenres($book['genres']);
+    $localDescription = comparableValue($local['description']);
+    $localCover = comparableValue($local['cover_url']);
+    $localReleaseDate = comparableValue($local['release_date']);
     $scalarChanges =
-        ($book['title'] !== null && $book['title'] !== '' && $book['title'] !== $local['title']
+        (comparableValue($book['title']) !== null && comparableValue($book['title']) !== comparableValue($local['title'])
         ) ||
-        ($book['description'] !== null && $book['description'] !== '' && $book['description'] !== $local['description']
+        (comparableValue($book['description']) !== null && comparableValue($book['description']) !== $localDescription
         ) ||
-        ($book['cover_url'] !== null && $book['cover_url'] !== '' && $book['cover_url'] !== $local['cover_url']
+        (comparableValue($book['cover_url']) !== null && comparableValue($book['cover_url']) !== $localCover
         ) ||
-        ($book['release_date'] !== null &&
-            $book['release_date'] !== '' &&
-            $book['release_date'] !== $local['release_date']);
+        (comparableValue($book['release_date']) !== null && comparableValue($book['release_date']) !== $localReleaseDate);
     $seriesChanged =
         is_array($book['series']) &&
         $book['series']['id'] !== null &&
         (
-            (string)$book['series']['id'] !==
-            (string)($local['series_external_api_id'] ?? '') ||
-            $book['series']['name'] !==
-            ($local['series_name'] ?? '') ||
+            comparableValue($book['series']['id']) !== comparableValue($local['series_external_api_id'] ?? null) ||
+            comparableValue($book['series']['name']) !== comparableValue($local['series_name'] ?? null) ||
             (
                 $book['series']['position'] !==
                 null &&
-                (string)$book['series']['position'] !==
-                (string)($local['series_position'] ??
-                    '')
+                comparablePosition($book['series']['position']) !== comparablePosition($local['series_position'] ?? null)
             ));
     $authorsChanged =
-        $remoteAuthors !==
-        [] &&
-        $remoteAuthors !==
-        $localAuthors;
+        $remoteAuthors !== [] && $remoteAuthors !== $localAuthors;
 
     $genresChanged =
-        $remoteGenres !==
-        [] &&
-        $remoteGenres !==
-        $localGenres;
+        $remoteGenres !== [] && $remoteGenres !== $localGenres;
 
     if (!$scalarChanges && !$seriesChanged && !$authorsChanged && !$genresChanged) return false;
     $pdo->beginTransaction();
