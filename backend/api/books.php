@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
+const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dnf'];
 
 /**
  * Sends a JSON response and stops execution immediately.
@@ -183,7 +184,7 @@ function savedBook(PDO $pdo, int $bookId): array
  * @return array The saved book.
  * @throws Throwable When a database operation fails.
  */
-function saveBook(PDO $pdo, array $book): array
+function saveBook(PDO $pdo, array $book, string $status = 'want_to_read'): array
 {
     // One transaction covers series, canonical book, relationships, and user status.
     $pdo->beginTransaction();
@@ -229,7 +230,7 @@ function saveBook(PDO $pdo, array $book): array
             }
             $pdo->prepare('INSERT IGNORE INTO book_genres (book_id, genre_id) VALUES (?, ?)')->execute([$bookId, $genreId]);
         }
-        $pdo->prepare("INSERT IGNORE INTO user_books (book_id, status) VALUES (?, 'want_to_read')")->execute([$bookId]);
+        $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)')->execute([$bookId, $status]);
         $pdo->commit();
         return savedBook($pdo, (int)$bookId);
     } catch (Throwable $exception) {
@@ -245,8 +246,15 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
     // Return all saved books for the library view.
     $books = [];
-    foreach ($pdo->query('SELECT id FROM books ORDER BY id')->fetchAll() as $row) $books[] = savedBook($pdo, (int)$row['id']);
+    foreach ($pdo->query('SELECT b.id FROM books b JOIN user_books ub ON ub.book_id = b.id ORDER BY b.id')->fetchAll() as $row) $books[] = savedBook($pdo, (int)$row['id']);
     respond($books);
+}
+if ($method === 'DELETE') {
+    $hardcoverId = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
+    $stmt = $pdo->prepare('DELETE ub FROM user_books ub JOIN books b ON b.id = ub.book_id WHERE b.external_api_id = ?');
+    $stmt->execute([(string)$hardcoverId]);
+    respond(['status' => null]);
 }
 if ($method !== 'POST') respond(['error' => 'Method not allowed.'], 405);
 
@@ -255,20 +263,22 @@ $payload = json_decode((string)file_get_contents('php://input'), true);
 if (!is_array($payload) || !array_key_exists('hardcover_id', $payload)) respond(['error' => 'A JSON body with hardcover_id is required.'], 400);
 $hardcoverId = filter_var($payload['hardcover_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
+$status = $payload['status'] ?? 'want_to_read';
+if (!is_string($status) || !in_array($status, BOOK_STATUSES, true)) respond(['error' => 'status is invalid.'], 422);
 
 // Reuse an existing book before contacting Hardcover so repeated saves stay idempotent.
 $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
 $stmt->execute([(string)$hardcoverId]);
 $existingId = $stmt->fetchColumn();
 if ($existingId) {
-    $pdo->prepare("INSERT IGNORE INTO user_books (book_id, status) VALUES (?, 'want_to_read')")->execute([$existingId]);
+    $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)')->execute([$existingId, $status]);
     respond(savedBook($pdo, (int)$existingId));
 }
 // Fetch new book details only after validating the configured API token.
 $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') respond(['error' => 'The Hardcover API is not configured.'], 503);
 try {
-    $saved = saveBook($pdo, fetchHardcoverBook((int)$hardcoverId, $token));
+    $saved = saveBook($pdo, fetchHardcoverBook((int)$hardcoverId, $token), $status);
     respond($saved, 201);
 } catch (Throwable $exception) {
     respond(['error' => 'The book could not be saved.'], 500);

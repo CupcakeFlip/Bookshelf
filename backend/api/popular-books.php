@@ -149,6 +149,21 @@ function normalizeBook(array $book): array
     ];
 }
 
+/** Adds locally saved reading statuses with one indexed lookup for the result set. */
+function enrichStatuses(PDO $pdo, array $books): array
+{
+    if ($books === []) return $books;
+    $ids = array_map(static fn(array $book): string => (string)$book['hardcover_id'], $books);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT b.external_api_id, ub.status FROM books b JOIN user_books ub ON ub.book_id = b.id WHERE b.external_api_id IN ($placeholders)");
+    $stmt->execute($ids);
+    $statuses = [];
+    foreach ($stmt->fetchAll() as $row) $statuses[(string)$row['external_api_id']] = $row['status'];
+    foreach ($books as &$book) $book['status'] = $statuses[(string)$book['hardcover_id']] ?? null;
+    unset($book);
+    return $books;
+}
+
 // Only allow GET requests.
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     respond(['error' => 'Method not allowed.'], 405);
@@ -160,6 +175,7 @@ $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') {
     respond(['error' => 'Hardcover API is not configured.'], 503);
 }
+$pdo = require __DIR__ . '/../settings/init.php';
 
 // Use the last 30 days to find currently trending books.
 $to = new DateTimeImmutable('today', new DateTimeZone('UTC'));
@@ -268,4 +284,4 @@ foreach ($ids as $id) {
     }
 }
 
-respond($popularBooks);
+respond(enrichStatuses($pdo, $popularBooks));

@@ -1,9 +1,9 @@
 <template>
     <!-- Kortets hovedhandling åbner bogen, mens den separate knap tilføjer den til en liste. -->
-    <article class="book-card h-100">
+    <article :class="{ 'dropdown-open': isMenuOpen }" class="book-card h-100">
         <div
-            class="book-card__inner book-card__main"
             :class="{ 'is-flipped': isFlipped }"
+            class="book-card__inner book-card__main"
             @click="isFlipped = !isFlipped"
         >
             <div class="book-card__front">
@@ -26,45 +26,68 @@
                     <h2 class="book-title">
                         {{ book.title }}
                     </h2>
-                    <p v-if="authors" class="book-meta mb-1">
+                    <p v-if="authors" class="book-meta mb-1 book-authors book-authors__front">
                         {{ authors }}
                     </p>
-                    <p v-if="seriesText" class="book-meta mb-2">
+                    <p v-if="seriesText" class="book-meta mb-2 book-seriesText book-seriesText__front">
                         {{ seriesText }}
                     </p>
                 </div>
             </div>
             <div class="book-card__back">
                 <div class="book-card__content">
-                    <h2 class="book-title">
+                    <h3 class="book-title">
                         {{ book.title }}
-                    </h2>
-                    <p v-if="authors" class="book-meta mb-1">
+                    </h3>
+                    <p v-if="authors" class="book-meta mb-1 book-authors book-authors__back">
                         {{ authors }}
                     </p>
-                    <p v-if="seriesText" class="book-meta mb-2">
+                    <p v-if="seriesText" class="book-meta mb-2 book-seriesText book-seriesText__back ">
                         {{ seriesText }}
                     </p>
 
+                    <hr>
+
                     <p
                         v-if="description"
-                        class="book-meta mb-2 book-description"
+                        class="book-meta mb-2
+                        book-description"
                     >
                         {{ description }}
                     </p>
                 </div>
             </div>
         </div>
-        <hr class="m-0 mb-2" />
+        <hr class="m-0 mb-2"/>
         <div class="mt-auto d-flex flex-wrap justify-content-evenly m-2 gap-2">
-            <div class="">
-                <button
-                    v-if="book.status"
-                    :class="statusClass"
-                    class="badge status-badge h-100"
-                >
-                    {{ statusLabel }}
-                </button>
+            <div class="dropdown" @click.stop>
+                <div class="btn-group" role="group">
+                    <button :class="statusButtonClass"
+                        :disabled="pending"
+                        class="btn btn-sm"
+                        type="button"
+                        @click="mainStatusAction">
+                        {{ statusLabel }}
+                    </button>
+                    <button :aria-expanded="isMenuOpen"
+                        :class="statusButtonClass"
+                        :disabled="pending"
+                        class="btn btn-sm dropdown-toggle dropdown-toggle-split"
+                        type="button"
+                        @click="isMenuOpen = !isMenuOpen">
+                        <span class="visually-hidden">Toggle reading status</span>
+                    </button>
+                </div>
+                <ul v-if="isMenuOpen" class="dropdown-menu show">
+                    <li v-for="option in statusOptions" :key="option.value">
+                        <button :class="{ active: currentStatus === option.value }"
+                            class="dropdown-item"
+                            type="button"
+                            @click="selectStatus(option.value)">
+                            {{ option.label }}
+                        </button>
+                    </li>
+                </ul>
             </div>
 
             <div class="">
@@ -77,25 +100,39 @@
                 </button>
             </div>
         </div>
+        <p v-if="errorMessage" class="small text-danger px-2 mb-2" role="alert">{{ errorMessage }}</p>
     </article>
 </template>
 <script setup>
-import { computed, ref } from "vue";
+import {computed, ref} from "vue";
+import {removeBookStatus, saveBookStatus} from "@/api/books";
+
 const isFlipped = ref(false);
+const isMenuOpen = ref(false);
+const pending = ref(false);
+const errorMessage = ref("");
 
 /** Book data used to populate the card. */
-const props = defineProps({ book: { type: Object, required: true } });
+const props = defineProps({book: {type: Object, required: true}});
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
+const statusOptions = [
+    {value: null, label: "Not in library"},
+    {value: "want_to_read", label: "Want to read"},
+    {value: "reading", label: "Reading"},
+    {value: "finished", label: "Finished"},
+    {value: "dnf", label: "Did not finish"},
+];
+const currentStatus = computed(() => props.book.status ?? null);
 
 // Normalize possible API field names before displaying the book.
 const cover_url = computed(() => props.book.cover_url ?? "");
 const authors = computed(() =>
     Array.isArray(props.book.authors)
         ? props.book.authors
-              .map((a) => (typeof a === "string" ? a : a?.name))
-              .filter(Boolean)
-              .join(", ")
+            .map((a) => (typeof a === "string" ? a : a?.name))
+            .filter(Boolean)
+            .join(", ")
         : (props.book.authors ?? props.book.author ?? ""),
 );
 const name = computed(
@@ -145,14 +182,84 @@ const statusLabel = computed(
             read: "Finished",
             paused: "Paused",
             dnf: "DNF",
-        })[normalized.value] ?? props.book.status,
+        })[normalized.value] ?? "Not in library",
 );
+const statusButtonClass = computed(() => currentStatus.value
+    ? `btn-status btn-${statusClass.value.replace("status-", "")}`
+    : "btn-status btn-not-in-library");
+
+async function selectStatus(status) {
+    if (pending.value || status === currentStatus.value) {
+        isMenuOpen.value = false;
+        return;
+    }
+    const previous = currentStatus.value;
+    pending.value = true;
+    errorMessage.value = "";
+    isMenuOpen.value = false;
+    try {
+        const saved = status === null ? await removeBookStatus(props.book) : await saveBookStatus(props.book, status);
+        emit("status-change", {book: saved.status === undefined ? {...props.book, status} : saved, status, previous});
+    } catch (error) {
+        errorMessage.value = error.message;
+    } finally {
+        pending.value = false;
+    }
+}
+
+function mainStatusAction() {
+    if (currentStatus.value === null) selectStatus("want_to_read");
+}
 </script>
 <style lang="scss" scoped>
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
 .book-card {
+    position: relative;
+    z-index: 0;
     display: flex;
+    overflow: visible;
+    // Let the status menu escape the card while the cover keeps its own clipping.
     flex-direction: column;
     perspective: 1000px;
+}
+
+.book-card.dropdown-open {
+    z-index: 1050;
+}
+
+.dropdown-menu {
+    z-index: 1060;
+}
+
+.btn-not-in-library {
+    color: var(--bs-btn-color) !important;
+    border-color: var(--bs-btn-border-color) !important;
+    background-color: var(--bs-btn-bg) !important;
+    --bs-btn-color: #f5ece8;
+    --bs-btn-bg: #625b58;
+    --bs-btn-border-color: #625b58;
+    --bs-btn-hover-color: #f5ece8;
+    --bs-btn-hover-bg: #756c68;
+    --bs-btn-hover-border-color: #756c68;
+    --bs-btn-active-color: #f5ece8;
+    --bs-btn-active-bg: #504a47;
+    --bs-btn-active-border-color: #504a47;
+}
+
+.book-card__cover-wrapper {
+    border-radius: .8rem .8rem 0 0;
 }
 
 .book-card__main {
@@ -178,10 +285,10 @@ const statusLabel = computed(
 
 .book-card__front,
 .book-card__back {
-    grid-area: 1 / 1;
     display: flex;
     flex-direction: column;
     width: 100%;
+    grid-area: 1 / 1;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
 }
@@ -229,11 +336,27 @@ const statusLabel = computed(
     outline: 2px solid #b985c6;
     outline-offset: -2px;
 }
+
 .book-description {
     display: -webkit-box;
     overflow: hidden;
+    color: var(--bs-light);
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 12;
     line-clamp: 12;
 }
+
+.book-authors {
+    font-weight: 600;
+}
+
+.book-seriesText {
+    font-style: italic;
+}
+
+.book-seriesText__back, .book-authors__back {
+    font-size: 0.9rem;
+}
+
+
 </style>

@@ -18,9 +18,13 @@ const genre = ref("");
 /** @type {import('vue').Ref<Book[]>} */
 const books = ref([]);
 
+function updateBook({book}) {
+    const index = books.value.findIndex(item => item.hardcover_id === book.hardcover_id);
+    if (index >= 0) books.value[index] = book;
+}
+
 
 /**
- * TODO: Fetch books from hardcover API and store them in the `books` ref.
  * TODO: Make pagination work by fetching only a limited number of books at a time and updating the `books` ref accordingly.
  */
 
@@ -93,6 +97,6 @@ const filteredBooks = computed(() =>
                 </div>
             </div>
         </div>
-        <BookGrid :books="filteredBooks"/>
+        <BookGrid :books="filteredBooks" @status-change="updateBook"/>
     </main>
 </template>
