@@ -63,3 +63,21 @@ Content-Type: application/json
 ```
 
 PHP bruger kun Hardcover-ID'et fra requesten og henter de autoritative bogdetaljer server-side. Nye bøger får status `want_to_read`. Gentagne POST-kald er idempotente: den eksisterende bog og brugerstatus genbruges uden dubletter.
+
+## Lister
+
+Lister og deres bøger håndteres via:
+
+```text
+GET    http://localhost:8000/api/lists.php
+GET    http://localhost:8000/api/lists.php?id=1
+POST   http://localhost:8000/api/lists.php
+PUT    http://localhost:8000/api/lists.php?id=1
+DELETE http://localhost:8000/api/lists.php?id=1
+```
+
+Opret eller opdater en liste med `name`, en valgfri `description` og eventuelt
+`book_ids`, for eksempel `{"name":"Fantasy","book_ids":[1,2]}`. `PUT` erstatter
+bogtilknytningerne, når `book_ids` er med; udelades feltet, bevares de
+eksisterende tilknytninger. Sletning af en liste sletter også dens
+`book_lists`-rækker, men ikke bøgerne.

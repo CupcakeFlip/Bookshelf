@@ -1,20 +1,577 @@
-// 1. Include functions first (so you can manipulate colors, SVGs, calc, etc)
+// 1. Include functions first (so you can manipulate colors, SVGs, calc, etc.)
 @import "../../../node_modules/bootstrap/scss/functions";
 
-// 2. Include any default variable overrides here
-$link-decoration: none;
+
+// -------------------------------------------------
+// 2. Default variable overrides
+// -------------------------------------------------
+
+
+// -------------------------------------------------
+// Base colours
+// -------------------------------------------------
+
+$bg-main: #161110;
+$bg-surface: #221918;
+$bg-surface-2: #2e2221;
+$bg-surface-hover: #382927;
+
+$text-main: #f5ece8;
+$text-muted: #c2afa8;
+
+$border-soft: #4a3836;
+$border-strong: #614b46;
+
+
+// -------------------------------------------------
+// Bootstrap theme colours
+// -------------------------------------------------
+
+$primary: #7f4f8e;
+$secondary: #4f6789;
+
+$success: #526b4f; // Finished
+$warning: #8a5738; // Reading
+$danger: #7f4646;  // DNF
+$info: #4f6789;    // Want to read
+
+$paused: #675a83;
+
+$light: $text-main;
+$dark: $bg-main;
+
+
+// -------------------------------------------------
+// Hover / active colours
+// -------------------------------------------------
+
+$primary-hover: #925fa2;
+$primary-active: #6d427a;
+
+$secondary-hover: #607ba0;
+$secondary-active: #425875;
+
+$want-read-hover: #607ba0;
+$reading-hover: #a26741;
+$finished-hover: #647f60;
+$paused-hover: #796b97;
+$dnf-hover: #965656;
+
+
+// -------------------------------------------------
+// General Bootstrap styling
+// -------------------------------------------------
+
+$body-bg: $bg-main;
+$body-color: $text-main;
+
+$body-secondary-color: $text-muted;
+$body-secondary-bg: $bg-surface;
+$body-tertiary-bg: $bg-surface-2;
+
+$border-color: $border-soft;
+
+$link-color: #b985c6;
+$link-hover-color: #c99bd4;
+
+$card-bg: $bg-surface;
+$card-color: $text-main;
+$card-border-color: $border-soft;
+$card-border-radius: .85rem;
+
+$input-bg: $bg-surface-2;
+$input-color: $text-main;
+$input-border-color: $border-strong;
+$input-placeholder-color: #a89188;
+
+$input-focus-bg: $bg-surface-2;
+$input-focus-color: $text-main;
+$input-focus-border-color: #9b67a8;
+$input-focus-box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+
+$form-select-bg: $bg-surface-2;
+$form-select-color: $text-main;
+$form-select-border-color: $border-strong;
+
+$form-check-input-bg: $bg-surface-2;
+$form-check-input-border: 1px solid $border-strong;
+$form-check-input-checked-bg-color: $primary;
+$form-check-input-checked-border-color: $primary;
+
+$dropdown-bg: $bg-surface;
+$dropdown-color: $text-main;
+$dropdown-border-color: $border-soft;
+$dropdown-link-color: $text-main;
+$dropdown-link-hover-color: $text-main;
+$dropdown-link-hover-bg: $bg-surface-2;
+$dropdown-link-active-color: $text-main;
+$dropdown-link-active-bg: $primary;
+
+$modal-content-bg: $bg-surface;
+$modal-content-color: $text-main;
+$modal-content-border-color: $border-soft;
+$modal-header-border-color: $border-soft;
+$modal-footer-border-color: $border-soft;
+
+$list-group-color: $text-main;
+$list-group-bg: $bg-surface;
+$list-group-border-color: $border-soft;
+$list-group-hover-bg: $bg-surface-2;
+
+$table-color: $text-main;
+$table-bg: transparent;
+$table-border-color: $border-soft;
+$table-striped-bg: rgba(255, 255, 255, .025);
+$table-hover-bg: rgba(255, 255, 255, .045);
+
+$navbar-dark-color: rgba(245, 236, 232, .8);
+$navbar-dark-hover-color: $text-main;
+$navbar-dark-active-color: $text-main;
+$navbar-dark-brand-color: $text-main;
+$navbar-dark-brand-hover-color: $text-main;
+
+$nav-link-color: $text-muted;
+$nav-link-hover-color: $text-main;
+
+$btn-font-weight: 600;
+$btn-padding-y: .55rem;
+$btn-padding-x: 1rem;
+$btn-border-radius: .65rem;
+$btn-focus-width: .2rem;
+$btn-focus-box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+
+$badge-font-weight: 600;
+$badge-padding-y: .5em;
+$badge-padding-x: .8em;
+$badge-border-radius: 999px;
+
 
 // 3. Include remainder of required Bootstrap stylesheets
 @import "../../../node_modules/bootstrap/scss/variables";
 @import "../../../node_modules/bootstrap/scss/variables-dark";
 
-// 4. Include any default map overrides here
-$custom-colors: (
-    "farve": $cyan-400,
+
+// -------------------------------------------------
+// 4. Custom theme colour map
+// -------------------------------------------------
+
+$custom-theme-colors: (
+    "want-read": #4f6789,
+    "reading": #8a5738,
+    "finished": #526b4f,
+    "paused": #675a83,
+    "dnf": #7f4646,
+    "surface": #221918,
+    "surface-2": #2e2221
 );
 
-$theme-colors: map-merge($theme-colors, $custom-colors);
+$theme-colors: map-merge($theme-colors, $custom-theme-colors);
 
+
+// Import the Bootstrap components used by the project
 @import "bootstrapComponents";
 
-// 5. Du kan lave styling her...
+
+// -------------------------------------------------
+// 5. Project styling
+// -------------------------------------------------
+
+
+// -------------------------------------------------
+// Base
+// -------------------------------------------------
+
+html {
+    color-scheme: dark;
+}
+
+body {
+    background-color: $bg-main;
+    color: $text-main;
+}
+
+a {
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+        text-decoration: underline;
+    }
+}
+
+.text-muted,
+.text-body-secondary {
+    color: $text-muted !important;
+}
+
+hr {
+    border-color: $border-soft;
+    opacity: 1;
+}
+
+
+// -------------------------------------------------
+// Surfaces
+// -------------------------------------------------
+
+.bg-surface {
+    background-color: $bg-surface !important;
+}
+
+.bg-surface-2 {
+    background-color: $bg-surface-2 !important;
+}
+
+.card,
+.modal-content,
+.dropdown-menu,
+.offcanvas,
+.list-group-item {
+    background-color: $bg-surface;
+    color: $text-main;
+    border-color: $border-soft;
+}
+
+.card-header,
+.card-footer,
+.modal-header,
+.modal-footer {
+    border-color: $border-soft;
+}
+
+
+// -------------------------------------------------
+// Navbar
+// -------------------------------------------------
+
+.navbar {
+    background-color: $bg-surface !important;
+    border-bottom: 1px solid $border-soft;
+}
+
+.navbar-brand,
+.navbar .nav-link {
+    color: $text-main;
+}
+
+.navbar .nav-link {
+    opacity: .8;
+
+    &:hover,
+    &:focus,
+    &.active {
+        color: $text-main;
+        opacity: 1;
+    }
+}
+
+
+// -------------------------------------------------
+// Main buttons
+// -------------------------------------------------
+
+.btn-primary {
+    --bs-btn-color: #{$text-main};
+    --bs-btn-bg: #{$primary};
+    --bs-btn-border-color: #{$primary};
+
+    --bs-btn-hover-color: #{$text-main};
+    --bs-btn-hover-bg: #{$primary-hover};
+    --bs-btn-hover-border-color: #{$primary-hover};
+
+    --bs-btn-active-color: #{$text-main};
+    --bs-btn-active-bg: #{$primary-active};
+    --bs-btn-active-border-color: #{$primary-active};
+
+    --bs-btn-disabled-color: #{$text-main};
+    --bs-btn-disabled-bg: #{$primary};
+    --bs-btn-disabled-border-color: #{$primary};
+}
+
+.btn-secondary {
+    --bs-btn-color: #{$text-main};
+    --bs-btn-bg: #{$secondary};
+    --bs-btn-border-color: #{$secondary};
+
+    --bs-btn-hover-color: #{$text-main};
+    --bs-btn-hover-bg: #{$secondary-hover};
+    --bs-btn-hover-border-color: #{$secondary-hover};
+
+    --bs-btn-active-color: #{$text-main};
+    --bs-btn-active-bg: #{$secondary-active};
+    --bs-btn-active-border-color: #{$secondary-active};
+}
+
+
+// -------------------------------------------------
+// Status buttons and badges
+// -------------------------------------------------
+
+.status-badge,
+.btn-status {
+    color: $text-main !important;
+    font-weight: 600;
+    border: 0;
+}
+
+.status-badge {
+    border-radius: 999px;
+    padding: .5em .8em;
+}
+
+.status-want-read,
+.btn-want-read,
+.text-bg-want-read {
+    background-color: #4f6789 !important;
+    color: $text-main !important;
+}
+
+.status-reading,
+.btn-reading,
+.text-bg-reading {
+    background-color: #8a5738 !important;
+    color: $text-main !important;
+}
+
+.status-finished,
+.btn-finished,
+.text-bg-finished {
+    background-color: #526b4f !important;
+    color: $text-main !important;
+}
+
+.status-paused,
+.btn-paused,
+.text-bg-paused {
+    background-color: #675a83 !important;
+    color: $text-main !important;
+}
+
+.status-dnf,
+.btn-dnf,
+.text-bg-dnf {
+    background-color: #7f4646 !important;
+    color: $text-main !important;
+}
+
+.btn-want-read:hover,
+.btn-want-read:focus {
+    background-color: $want-read-hover !important;
+    color: $text-main !important;
+}
+
+.btn-reading:hover,
+.btn-reading:focus {
+    background-color: $reading-hover !important;
+    color: $text-main !important;
+}
+
+.btn-finished:hover,
+.btn-finished:focus {
+    background-color: $finished-hover !important;
+    color: $text-main !important;
+}
+
+.btn-paused:hover,
+.btn-paused:focus {
+    background-color: $paused-hover !important;
+    color: $text-main !important;
+}
+
+.btn-dnf:hover,
+.btn-dnf:focus {
+    background-color: $dnf-hover !important;
+    color: $text-main !important;
+}
+
+
+// -------------------------------------------------
+// Forms
+// -------------------------------------------------
+
+.form-control,
+.form-select {
+    background-color: $bg-surface-2;
+    color: $text-main;
+    border-color: $border-strong;
+
+    &::placeholder {
+        color: $input-placeholder-color;
+        opacity: 1;
+    }
+
+    &:focus {
+        background-color: $bg-surface-2;
+        color: $text-main;
+        border-color: #9b67a8;
+        box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+    }
+}
+
+.form-select option {
+    background-color: $bg-surface;
+    color: $text-main;
+}
+
+.form-check-input {
+    background-color: $bg-surface-2;
+    border-color: $border-strong;
+
+    &:checked {
+        background-color: $primary;
+        border-color: $primary;
+    }
+
+    &:focus {
+        border-color: #9b67a8;
+        box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+    }
+}
+
+.form-label {
+    color: $text-main;
+}
+
+
+// -------------------------------------------------
+// Dropdowns
+// -------------------------------------------------
+
+.dropdown-item {
+    color: $text-main;
+
+    &:hover,
+    &:focus {
+        color: $text-main;
+        background-color: $bg-surface-2;
+    }
+
+    &.active,
+    &:active {
+        color: $text-main;
+        background-color: $primary;
+    }
+}
+
+.dropdown-divider {
+    border-color: $border-soft;
+}
+
+
+// -------------------------------------------------
+// Tables
+// -------------------------------------------------
+
+.table {
+    --bs-table-color: #{$text-main};
+    --bs-table-bg: transparent;
+    --bs-table-border-color: #{$border-soft};
+
+    --bs-table-striped-bg: rgba(255, 255, 255, .025);
+    --bs-table-striped-color: #{$text-main};
+
+    --bs-table-hover-bg: rgba(255, 255, 255, .045);
+    --bs-table-hover-color: #{$text-main};
+}
+
+
+// -------------------------------------------------
+// List groups
+// -------------------------------------------------
+
+.list-group-item-action {
+    color: $text-main;
+
+    &:hover,
+    &:focus {
+        color: $text-main;
+        background-color: $bg-surface-2;
+    }
+
+    &.active {
+        background-color: $primary;
+        border-color: $primary;
+        color: $text-main;
+    }
+}
+
+
+// -------------------------------------------------
+// Pagination
+// -------------------------------------------------
+
+.pagination {
+    --bs-pagination-color: #{$text-main};
+    --bs-pagination-bg: #{$bg-surface};
+    --bs-pagination-border-color: #{$border-soft};
+
+    --bs-pagination-hover-color: #{$text-main};
+    --bs-pagination-hover-bg: #{$bg-surface-2};
+    --bs-pagination-hover-border-color: #{$border-soft};
+
+    --bs-pagination-active-color: #{$text-main};
+    --bs-pagination-active-bg: #{$primary};
+    --bs-pagination-active-border-color: #{$primary};
+
+    --bs-pagination-disabled-color: #{$text-muted};
+    --bs-pagination-disabled-bg: #{$bg-surface};
+    --bs-pagination-disabled-border-color: #{$border-soft};
+}
+
+
+// -------------------------------------------------
+// Book-specific components
+// -------------------------------------------------
+
+.book-card {
+    background-color: $bg-surface;
+    border: 1px solid $border-soft;
+    border-radius: .85rem;
+    overflow: hidden;
+
+    transition:
+        transform .18s ease,
+        background-color .18s ease,
+        border-color .18s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        background-color: $bg-surface-hover;
+        border-color: $border-strong;
+    }
+}
+
+.book-cover {
+    display: block;
+    width: 100%;
+    object-fit: cover;
+}
+
+.book-title {
+    color: $text-main;
+    font-weight: 600;
+}
+
+.book-meta {
+    color: $text-muted;
+}
+
+.sidebar,
+.app-panel {
+    background-color: $bg-surface;
+    border-color: $border-soft;
+}
+
+
+// -------------------------------------------------
+// Selection / scrollbar
+// -------------------------------------------------
+
+::selection {
+    background-color: $primary;
+    color: $text-main;
+}
+
+* {
+    scrollbar-color: $border-strong $bg-main;
+}

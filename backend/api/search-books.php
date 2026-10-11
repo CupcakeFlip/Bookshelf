@@ -8,7 +8,13 @@ declare(strict_types=1);
 
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 
-// Common helper to send a JSON response and stop execution immediately.
+/**
+ * Sends a JSON response and stops execution immediately.
+ *
+ * @param array $payload Response data.
+ * @param int $status HTTP response status.
+ * @return never
+ */
 function respond(array $payload, int $status = 200): never
 {
     http_response_code($status);
@@ -17,8 +23,12 @@ function respond(array $payload, int $status = 200): never
     exit;
 }
 
-// Return the first non-empty value from an array, which is useful when the API
-// returns the same field in different shapes across responses.
+/**
+ * Returns the first value that is not null or empty.
+ *
+ * @param array $values Values to inspect in order.
+ * @return mixed The first usable value, or null when none exists.
+ */
 function firstValue(array $values): mixed
 {
     foreach ($values as $value) {
@@ -30,7 +40,12 @@ function firstValue(array $values): mixed
     return null;
 }
 
-// Contributions contain the real Hardcover author IDs; author_names is only a fallback.
+/**
+ * Normalizes author data from the different Hardcover response shapes.
+ *
+ * @param mixed $value Raw author data.
+ * @return array Unique authors with IDs and names.
+ */
 function normalizeAuthors(mixed $value): array
 {
     if (!is_array($value)) {
@@ -64,7 +79,12 @@ function normalizeAuthors(mixed $value): array
     return array_values($uniqueAuthors);
 }
 
-// book_series.id is a relationship ID; the actual Hardcover series ID is nested in series.id.
+/**
+ * Normalizes a series relationship or direct series object.
+ *
+ * @param mixed $value Raw series data.
+ * @return array|null Normalized series data, or null when unavailable.
+ */
 function normalizeSeries(mixed $value): ?array
 {
     if (!is_array($value)) {
@@ -102,6 +122,12 @@ function normalizeSeries(mixed $value): ?array
     ];
 }
 
+/**
+ * Converts Hardcover genre tags into the frontend format.
+ *
+ * @param mixed $cachedTags Raw cached tag data.
+ * @return array Normalized genres.
+ */
 function normalizeGenres(mixed $cachedTags): array
 {
     $genres = is_array($cachedTags) && is_array($cachedTags['Genre'] ?? null)
@@ -123,9 +149,13 @@ function normalizeGenres(mixed $cachedTags): array
     return $normalized;
 }
 
-// Normalize a raw Hardcover result into the shape used by the frontend.
-// This hides the differences between API payload variations and keeps the app
-// more predictable than raw API data.
+/**
+ * Converts a raw Hardcover result into the frontend book shape.
+ *
+ * @param mixed $book Raw search result or book document.
+ * @param array|null $details Optional detail response for description and tags.
+ * @return array Normalized book data.
+ */
 function normalizeBook(mixed $book, ?array $details = null): array
 {
     if (!is_array($book)) {
@@ -139,7 +169,7 @@ function normalizeBook(mixed $book, ?array $details = null): array
         ];
     }
 
-    // Hardcover wraps each search hit in a hit object; the book fields are in document.
+    // Hardcover wraps each search hit in a hit object; book fields are in document.
     if (is_array($book['document'] ?? null)) {
         $book = $book['document'];
     }
@@ -174,6 +204,13 @@ function normalizeBook(mixed $book, ?array $details = null): array
     ];
 }
 
+/**
+ * Fetches description and genre details for one Hardcover book.
+ *
+ * @param int $bookId Hardcover book identifier.
+ * @param string $token Hardcover API token.
+ * @return array|null Detail data, or null when the request fails.
+ */
 function fetchBookDetails(int $bookId, string $token): ?array
 {
     $graphql = <<<'GRAPHQL'
@@ -205,7 +242,7 @@ GRAPHQL;
 
     $responseBody = curl_exec($curl);
     $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
+
 
     if ($responseBody === false || $httpStatus < 200 || $httpStatus >= 300) {
         return null;
@@ -270,7 +307,6 @@ curl_setopt_array($curl, [
 $responseBody = curl_exec($curl);
 $curlError = curl_error($curl);
 $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-curl_close($curl);
 
 if ($responseBody === false) {
     respond(['error' => 'Could not reach the Hardcover API.'], 502);

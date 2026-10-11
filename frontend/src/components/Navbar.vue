@@ -1,32 +1,39 @@
-<script setup>
-
-</script>
-
 <template>
-    <nav class="navbar navbar-expand-lg bg-body-tertiary">
-        <div class="container-fluid">
-            <RouterLink class="navbar-brand" to="/">Navbar</RouterLink>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <RouterLink class="nav-link active" aria-current="page" to="/">Home</RouterLink>
-                    </li>
-                    <li class="nav-item">
-                        <RouterLink class="nav-link" to="/whatever">Whatever</RouterLink>
+    <!-- Navigationen bruger router-links, så siden skifter uden en fuld genindlæsning. -->
+    <nav aria-label="Primary navigation" class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <RouterLink class="navbar-brand fw-semibold" to="/">Bookshelf</RouterLink>
+            <button aria-controls="primary-navigation"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+                class="navbar-toggler"
+                data-bs-target="#primary-navigation"
+                data-bs-toggle="collapse"
+                type="button"><span class="navbar-toggler-icon"/></button>
+            <div id="primary-navigation" class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li v-for="item in items" :key="item.to" class="nav-item">
+                        <RouterLink :aria-disabled="item.soon ? 'true' : undefined"
+                            :tabindex="item.soon ? -1 : undefined"
+                            :to="item.to"
+                            class="nav-link"
+                            @click="item.soon ? stop($event) : undefined">{{ item.label }}<span v-if="item.soon"
+                            class="visually-hidden"> (coming soon)</span></RouterLink>
                     </li>
                 </ul>
-                <form class="d-flex" role="search">
-                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-                    <button class="btn btn-outline-success" type="submit">Search</button>
-                </form>
             </div>
         </div>
     </nav>
 </template>
+<script setup>
+/** Navigation entries rendered in the primary menu. */
+const items = [
+    {label: "Home", to: "/"},
+    {label: "Lists", to: "/lists"},
+    {label: "Stats", to: "/stats", soon: true},
+    {label: "Library", to: "/library"}
+];
 
-<style scoped>
-
-</style>
+/** Prevents placeholder links from navigating before their feature exists. */
+const stop = event => event.preventDefault();
+</script>
