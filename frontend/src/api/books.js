@@ -1,6 +1,24 @@
 const statusValues = ["want_to_read", "reading", "finished", "paused", "dnf"];
 const formatValues = ["physical", "ebook", "audiobook"];
 
+/** Searches locally saved books by title or author. */
+export async function searchLocalBooks(query = "") {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    const response = await fetch(`/api/books.php${params.size ? `?${params}` : ""}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not search the local library.");
+    return Array.isArray(payload) ? payload : [];
+}
+
+/** Searches Hardcover through the server-side normalized search endpoint. */
+export async function searchHardcoverBooks(query) {
+    const response = await fetch(`/api/search-books.php?q=${encodeURIComponent(query.trim())}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not search Hardcover.");
+    return Array.isArray(payload.results) ? payload.results : [];
+}
+
 /**
  * Saves a book in the local library or updates its reading status.
  *

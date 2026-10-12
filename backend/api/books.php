@@ -265,9 +265,20 @@ $db = require __DIR__ . '/../settings/init.php';
 $pdo = $db;
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
-    // Return all saved books for the library view.
+    // Return saved books, optionally narrowed by title or author.
+    $query = trim((string)($_GET['q'] ?? ''));
+    $sql = 'SELECT DISTINCT b.id FROM books b JOIN user_books ub ON ub.book_id = b.id LEFT JOIN book_authors ba ON ba.book_id = b.id LEFT JOIN authors a ON a.id = ba.author_id';
+    $parameters = [];
+    if ($query !== '') {
+        $sql .= ' WHERE b.title LIKE ? OR a.name LIKE ?';
+        $term = '%' . $query . '%';
+        $parameters = [$term, $term];
+    }
+    $sql .= ' ORDER BY b.id';
     $books = [];
-    foreach ($pdo->query('SELECT b.id FROM books b JOIN user_books ub ON ub.book_id = b.id ORDER BY b.id')->fetchAll() as $row) $books[] = savedBook($pdo, (int)$row['id']);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($parameters);
+    foreach ($stmt->fetchAll() as $row) $books[] = savedBook($pdo, (int)$row['id']);
     respond($books);
 }
 if ($method === 'DELETE') {
