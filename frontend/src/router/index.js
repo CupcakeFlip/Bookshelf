@@ -3,6 +3,7 @@ import Frontpage from "@/views/Frontpage.vue";
 import ListsView from "@/views/ListsView.vue";
 import LibraryView from "@/views/LibraryView.vue";
 import StatsView from "@/views/StatsView.vue";
+import BookDetailsView from "@/views/BookDetailsView.vue";
 
 // Define the client-side pages without full browser reloads.
 // Each route maps directly to a view; the PHP API is called by those views/components.
@@ -28,6 +29,10 @@ const router = createRouter({
             path: "/library",
             name: "library",
             component: LibraryView,
+        }, {
+            path: "/books/:hardcoverId",
+            name: "book details",
+            component: BookDetailsView,
         },
     ],
 });
