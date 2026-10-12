@@ -1,5 +1,33 @@
 <script setup>
+import { ref, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import Navbar from "@/components/Navbar.vue";
+
+const route = useRoute();
+
+const book = ref(null);
+const loading = ref(true);
+const error = ref("");
+
+async function fetchBook() {
+  try {
+    const response = await fetch(
+      `/api/book-details.php?hardcover_id=${route.params.hardcoverId}`,
+    );
+
+    if (!response.ok) {
+      throw new Error("Could not load book details.");
+    }
+
+    book.value = await response.json();
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(fetchBook);
 </script>
 
 <template>
@@ -7,40 +35,57 @@ import Navbar from "@/components/Navbar.vue";
 
   <main class="container-xl py-4 book-details">
     <div class="row g-4">
+      <section v-if="loading">
+        <p>Loading book...</p>
+      </section>
+
+      <section v-else-if="error" class="alert alert-danger">
+        {{ error }}
+      </section>
       <!-- Book information -->
-      <section class="col-12 col-lg-8 book-details__information">
+      <section
+        v-else-if="book"
+        class="col-12 col-lg-8 book-details__information"
+      >
         <div class="row g-3 align-items-start">
           <!-- Book cover -->
           <div class="col-4 col-sm-3">
             <img
-              src="#"
-              alt="Book cover"
               class="rounded book-details__cover img-fluid"
+              v-if="book.cover_url"
+              :src="book.cover_url"
+              :alt="`Cover of ${book.title}`"
             />
           </div>
 
           <!-- Book metadata -->
           <div class="col-8 col-sm-9">
             <div class="d-flex flex-column gap-2">
-              <p class="mb-0 fst-italic book-details__series">
-                Series and number
+              <p
+                v-if="book.series"
+                class="mb-0 fst-italic book-details__series"
+              >
+                {{ book.series.name }} #{{ book.series.position }}
               </p>
 
-              <h1 class="mb-0 book-details__title">Book title</h1>
+              <h1 class="mb-0 book-details__title">{{ book.title }}</h1>
 
-              <p class="mb-0 book-details__authors lead">Author</p>
+              <p class="mb-0 book-details__authors lead">
+                {{ book.authors.map((author) => author.name).join(", ") }}
+              </p>
 
               <div class="d-flex flex-wrap gap-2 book-details__genres">
-                <span class="badge rounded-pill text-bg-primary">
-                  Genre 1
-                </span>
-                <span class="badge rounded-pill text-bg-secondary">
-                  Genre 2
+                <span
+                  v-for="genre in book.genres"
+                  :key="genre.slug"
+                  class="badge rounded-pill text-bg-primary"
+                >
+                  {{ genre.name }}
                 </span>
               </div>
 
               <p class="mb-0 text-body-secondary book-details__release small">
-                Came out x years ago
+                {{ book.release_date }}
               </p>
             </div>
           </div>
@@ -52,8 +97,7 @@ import Navbar from "@/components/Navbar.vue";
         <article class="book-details__description">
           <h2 class="h5">Description</h2>
           <p>
-            Book description. Lorem ipsum dolor sit amet, consectetur
-            adipisicing elit.
+            {{ book.description }}
           </p>
         </article>
       </section>
@@ -67,11 +111,16 @@ import Navbar from "@/components/Navbar.vue";
               <h2 class="card-title h6">Tags</h2>
 
               <div class="d-flex flex-wrap gap-2">
-                <span class="badge rounded-pill text-bg-primary"> Cozy </span>
-                <span class="badge rounded-pill text-bg-primary"> Cute </span>
-                <span class="badge rounded-pill text-bg-primary">
-                  Found Family
+                <span
+                  v-for="tag in book.tags"
+                  :key="tag.slug"
+                  class="badge rounded-pill text-bg-primary"
+                >
+                  {{ tag.name }}
                 </span>
+                <button class="badge rounded-pill text-bg-primary">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
               </div>
             </div>
           </section>
