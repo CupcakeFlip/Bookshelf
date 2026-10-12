@@ -1,6 +1,7 @@
 <script setup>
 import {computed, onMounted, onUnmounted, ref} from "vue";
 import {removeBookStatus, saveBookStatus} from "@/api/books";
+import {formatAuthors} from "@/utils/bookFormatting";
 
 const isFlipped = ref(false);
 const isMenuOpen = ref(false);
@@ -35,14 +36,7 @@ const currentStatus = computed(() => props.book.status ?? null);
 
 // Normalize possible API field names before displaying the book.
 const cover_url = computed(() => props.book.cover_url ?? "");
-const authors = computed(() =>
-    Array.isArray(props.book.authors)
-        ? props.book.authors
-            .map((a) => (typeof a === "string" ? a : a?.name))
-            .filter(Boolean)
-            .join(", ")
-        : (props.book.authors ?? props.book.author ?? ""),
-);
+const authors = computed(() => formatAuthors(props.book.authors ?? props.book.author));
 const name = computed(
     () =>
         props.book.series?.name ??

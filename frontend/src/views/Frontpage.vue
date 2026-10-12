@@ -3,6 +3,7 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
 import {searchHardcoverBooks, searchLocalBooks} from "@/api/books";
+import {filterBooksByGenre, getGenreOptions} from "@/utils/bookFormatting";
 
 const query = ref("");
 const genre = ref("");
@@ -81,8 +82,8 @@ onMounted(() => {
 });
 onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchPopularBooks));
 
-const genres = computed(() => [...new Set(books.value.flatMap(book => (book.genres ?? []).map(item => item?.name).filter(Boolean)))].sort());
-const filteredBooks = computed(() => books.value.filter(book => !genre.value || (book.genres ?? []).some(item => item?.name === genre.value)));
+const genreOptions = computed(() => getGenreOptions(books.value));
+const filteredBooks = computed(() => filterBooksByGenre(books.value, genre.value));
 </script>
 
 <template>
@@ -99,7 +100,12 @@ const filteredBooks = computed(() => books.value.filter(book => !genre.value || 
                     <label class="visually-hidden" for="genre-filter">Filter by genre</label>
                     <select id="genre-filter" v-model="genre" class="form-select">
                         <option value="">All genres</option>
-                        <option v-for="item in genres" :key="item" :value="item">{{ item }}</option>
+                        <optgroup label="Standard genres">
+                            <option v-for="item in genreOptions.standard" :key="item" :value="item">{{ item }}</option>
+                        </optgroup>
+                        <optgroup v-if="genreOptions.additional.length" label="Other genres">
+                            <option v-for="item in genreOptions.additional" :key="item" :value="item">{{ item }}</option>
+                        </optgroup>
                     </select>
                 </div>
             </form>
