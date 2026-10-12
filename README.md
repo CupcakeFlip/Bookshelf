@@ -112,3 +112,16 @@ Dates are stored as normalized SQL dates with a separate `day`, `month`,
 book through `books.php` creates, pauses, resumes, completes, or abandons the
 active session transactionally; cancelling a future completion form makes no
 request and therefore changes no status.
+
+Only one `reading` or `paused` session can exist for a book. This is protected
+by row locks on the canonical `books` row in every API transaction that can
+create or change a session.
+Editing or deleting an active session reconciles `user_books.status`; editing
+or deleting a historical session does not. Removing a book from the library
+abandons an active session before deleting only its `user_books` association.
+
+For existing databases, apply migration `002_reading_sessions.sql`. Legacy `date_started` and
+`date_finished` values are intentionally preserved and are not converted into
+sessions because their original precision and reading-attempt boundaries are
+unknown. A `month` date is stored on day 1, a `year` date on January 1, and an
+`unknown` date is stored as `NULL`.

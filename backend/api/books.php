@@ -287,8 +287,18 @@ if ($method === 'GET') {
 if ($method === 'DELETE') {
     $hardcoverId = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
-    $stmt = $pdo->prepare('DELETE ub FROM user_books ub JOIN books b ON b.id = ub.book_id WHERE b.external_api_id = ?');
-    $stmt->execute([(string)$hardcoverId]);
+    $bookId = sessionBookId($pdo, $hardcoverId);
+    if ($bookId === null) respond(['error' => 'Book not found.'], 404);
+    $pdo->beginTransaction();
+    try {
+        transitionSession($pdo, $bookId, 'want_to_read');
+        $stmt = $pdo->prepare('DELETE FROM user_books WHERE book_id = ?');
+        $stmt->execute([$bookId]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        respond(['error' => 'The book could not be removed from the library.'], 500);
+    }
     respond(['status' => null]);
 }
 if ($method !== 'POST') respond(['error' => 'Method not allowed.'], 405);

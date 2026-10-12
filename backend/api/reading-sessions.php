@@ -19,6 +19,11 @@ function requestPayload(): array
     return $payload;
 }
 
+function conflict(Throwable $exception): bool
+{
+    return $exception instanceof PDOException && (string)$exception->getCode() === '23000';
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if (!in_array($method, ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'], true)) respond(
     ['error' => 'Method not allowed.'],
@@ -68,12 +73,18 @@ if ($method === 'POST') {
         respond(['error' => $exception->getMessage()], 422);
     }
     if (!isset($data['status'])) respond(['error' => 'status is required.'], 400);
-    if (in_array($data['status'], ['reading', 'paused'], true) && activeSession($pdo, $bookId)) respond(
-        ['error' => 'The book already has an active reading session.'],
-        409
-    );
     $pdo->beginTransaction();
     try {
+        lockBook($pdo, $bookId);
+        if (in_array($data['status'], ['reading', 'paused'], true) && activeSession($pdo, $bookId)) {
+            $pdo->rollBack();
+            respond(['error' => 'The book already has an active reading session.'], 409);
+        }
+        if ($data['status'] === 'reading' && !array_key_exists('start_date', $data)) {
+            $data['start_date'] = sessionToday();
+            $data['start_date_precision'] = 'day';
+        }
+        $data = normalizeSessionDates($data);
         $stmt =
             $pdo->prepare(
                 'INSERT INTO reading_sessions (book_id, status, start_date, start_date_precision, finish_date, finish_date_precision, dnf_progress_type, dnf_progress_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -90,10 +101,12 @@ if ($method === 'POST') {
         );
         $id = (int)$pdo->lastInsertId();
         replaceSessionFormats($pdo, $id, $data['formats'] ?? []);
+        reconcileBookStatus($pdo, $bookId, $data['status']);
         $pdo->commit();
         respond(sessionData($pdo, $id), 201);
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) $pdo->rollBack();
+        if (conflict($exception)) respond(['error' => 'The book already has an active reading session.'], 409);
         respond(['error' => 'Reading session could not be created.'], 500);
     }
 }
@@ -105,7 +118,18 @@ $session = sessionData($pdo, (int)$sessionId);
 if (!$session || (int)$session['book_id'] !== $bookId) respond(['error' => 'Reading session not found.'], 404);
 
 if ($method === 'DELETE') {
-    $pdo->prepare('DELETE FROM reading_sessions WHERE id = ?')->execute([(int)$sessionId]);
+    $pdo->beginTransaction();
+    try {
+        lockBook($pdo, $bookId);
+        $current = sessionData($pdo, (int)$sessionId);
+        if (!$current) throw new RuntimeException('Reading session not found.');
+        $pdo->prepare('DELETE FROM reading_sessions WHERE id = ?')->execute([(int)$sessionId]);
+        if (in_array($current['status'], ['reading', 'paused'], true)) reconcileBookStatus($pdo, $bookId, 'want_to_read');
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        respond(['error' => 'Reading session could not be deleted.'], 500);
+    }
     respond(['deleted' => true]);
 }
 
@@ -115,7 +139,7 @@ try {
     respond(['error' => $exception->getMessage()], 422);
 }
 $merged = array_merge($session, $data);
-foreach (['id', 'book_id', 'hardcover_id', 'created_at', 'updated_at'] as $field) unset($merged[$field]);
+foreach (['id', 'book_id', 'hardcover_id', 'active_book_id', 'created_at', 'updated_at'] as $field) unset($merged[$field]);
 try {
     validateSessionPayload($merged);
 } catch (InvalidArgumentException $exception) {
@@ -123,6 +147,23 @@ try {
 }
 $pdo->beginTransaction();
 try {
+    lockBook($pdo, $bookId);
+    $current = sessionData($pdo, (int)$sessionId);
+    if (!$current) throw new RuntimeException('Reading session not found.');
+    $merged = normalizeSessionDates($merged);
+    $newStatus = $merged['status'];
+    if (in_array($newStatus, ['reading', 'paused'], true)) {
+        $other = activeSession($pdo, $bookId);
+        if ($other && (int)$other['id'] !== (int)$sessionId) {
+            $pdo->rollBack();
+            respond(['error' => 'The book already has an active reading session.'], 409);
+        }
+    }
+    foreach (['start_date', 'start_date_precision', 'finish_date', 'finish_date_precision'] as $field) if (array_key_exists($field, $data)) $data[$field] = $merged[$field];
+    if (array_key_exists('status', $data) && $data['status'] !== 'dnf') {
+        $data['dnf_progress_type'] = null;
+        $data['dnf_progress_value'] = null;
+    }
     $fields = [];
     $values = [];
     foreach (
@@ -143,9 +184,11 @@ try {
             ->prepare('UPDATE reading_sessions SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($values);
     }
     if (array_key_exists('formats', $data)) replaceSessionFormats($pdo, (int)$sessionId, $data['formats']);
+    if (in_array($current['status'], ['reading', 'paused'], true) || in_array($newStatus, ['reading', 'paused'], true)) reconcileBookStatus($pdo, $bookId, $newStatus);
     $pdo->commit();
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) $pdo->rollBack();
+    if (conflict($exception)) respond(['error' => 'The book already has an active reading session.'], 409);
     respond(['error' => 'Reading session could not be updated.'], 500);
 }
 respond(sessionData($pdo, (int)$sessionId));
