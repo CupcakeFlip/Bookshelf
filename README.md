@@ -81,3 +81,47 @@ Opret eller opdater en liste med `name`, en valgfri `description` og eventuelt
 bogtilknytningerne, når `book_ids` er med; udelades feltet, bevares de
 eksisterende tilknytninger. Sletning af en liste sletter også dens
 `book_lists`-rækker, men ikke bøgerne.
+
+## Reading history
+
+Reading history is stored in `reading_sessions`, independently of the current
+`user_books.status` and of owned formats in `user_book_formats`. Apply
+`database/migrations/002_reading_sessions.sql` to an existing database; it is
+safe to run repeatedly and leaves legacy `date_started` and `date_finished`
+values unchanged. Fresh installations receive the same tables from
+`database/schema.sql`.
+
+The session API uses a Hardcover ID to identify a book:
+
+```text
+GET    /api/reading-sessions.php?hardcover_id=1286648
+POST   /api/reading-sessions.php
+PATCH  /api/reading-sessions.php?id=1
+DELETE /api/reading-sessions.php?id=1
+```
+
+Example session payload:
+
+```json
+{"hardcover_id":1286648,"status":"dnf","start_date":"2026-10-01","start_date_precision":"day","finish_date":"2026-10-12","finish_date_precision":"day","formats":["ebook"],"dnf_progress_type":"percentage","dnf_progress_value":40}
+```
+
+Dates are stored as normalized SQL dates with a separate `day`, `month`,
+`year`, or `unknown` precision. DNF progress supports `percentage`, positive
+`page` values, or non-negative audiobook `time` values in minutes. Changing a
+book through `books.php` creates, pauses, resumes, completes, or abandons the
+active session transactionally; cancelling a future completion form makes no
+request and therefore changes no status.
+
+Only one `reading` or `paused` session can exist for a book. This is protected
+by row locks on the canonical `books` row in every API transaction that can
+create or change a session.
+Editing or deleting an active session reconciles `user_books.status`; editing
+or deleting a historical session does not. Removing a book from the library
+abandons an active session before deleting only its `user_books` association.
+
+For existing databases, apply migration `002_reading_sessions.sql`. Legacy `date_started` and
+`date_finished` values are intentionally preserved and are not converted into
+sessions because their original precision and reading-attempt boundaries are
+unknown. A `month` date is stored on day 1, a `year` date on January 1, and an
+`unknown` date is stored as `NULL`.

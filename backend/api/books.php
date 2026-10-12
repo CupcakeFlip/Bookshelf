@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../lib/reading_sessions.php';
+
 /**
  * Books API.
  *
@@ -205,7 +207,7 @@ function savedBook(PDO $pdo, int $bookId): array
  * @return array The saved book.
  * @throws Throwable When a database operation fails.
  */
-function saveBook(PDO $pdo, array $book, string $status = 'want_to_read'): array
+function saveBook(PDO $pdo, array $book, string $status = 'want_to_read', array $sessionDetails = []): array
 {
     // One transaction covers series, canonical book, relationships, and user status.
     $pdo->beginTransaction();
@@ -252,6 +254,7 @@ function saveBook(PDO $pdo, array $book, string $status = 'want_to_read'): array
             $pdo->prepare('INSERT IGNORE INTO book_genres (book_id, genre_id) VALUES (?, ?)')->execute([$bookId, $genreId]);
         }
         $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)')->execute([$bookId, $status]);
+        transitionSession($pdo, (int)$bookId, $status, $sessionDetails);
         $pdo->commit();
         return savedBook($pdo, (int)$bookId);
     } catch (Throwable $exception) {
@@ -284,8 +287,18 @@ if ($method === 'GET') {
 if ($method === 'DELETE') {
     $hardcoverId = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
-    $stmt = $pdo->prepare('DELETE ub FROM user_books ub JOIN books b ON b.id = ub.book_id WHERE b.external_api_id = ?');
-    $stmt->execute([(string)$hardcoverId]);
+    $bookId = sessionBookId($pdo, $hardcoverId);
+    if ($bookId === null) respond(['error' => 'Book not found.'], 404);
+    $pdo->beginTransaction();
+    try {
+        transitionSession($pdo, $bookId, 'want_to_read');
+        $stmt = $pdo->prepare('DELETE FROM user_books WHERE book_id = ?');
+        $stmt->execute([$bookId]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        respond(['error' => 'The book could not be removed from the library.'], 500);
+    }
     respond(['status' => null]);
 }
 if ($method !== 'POST') respond(['error' => 'Method not allowed.'], 405);
@@ -297,20 +310,32 @@ $hardcoverId = filter_var($payload['hardcover_id'], FILTER_VALIDATE_INT, ['optio
 if ($hardcoverId === false) respond(['error' => 'hardcover_id must be a positive integer.'], 400);
 $status = $payload['status'] ?? 'want_to_read';
 if (!is_string($status) || !in_array($status, BOOK_STATUSES, true)) respond(['error' => 'status is invalid.'], 422);
+$sessionDetails = is_array($payload['session'] ?? null) ? $payload['session'] : [];
 
 // Reuse an existing book before contacting Hardcover so repeated saves stay idempotent.
 $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
 $stmt->execute([(string)$hardcoverId]);
 $existingId = $stmt->fetchColumn();
 if ($existingId) {
-    $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)')->execute([$existingId, $status]);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status)')->execute([$existingId, $status]);
+        transitionSession($pdo, (int)$existingId, $status, $sessionDetails);
+        $pdo->commit();
+    } catch (InvalidArgumentException $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        respond(['error' => $exception->getMessage()], 422);
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        respond(['error' => 'The book status could not be updated.'], 500);
+    }
     respond(savedBook($pdo, (int)$existingId));
 }
 // Fetch new book details only after validating the configured API token.
 $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') respond(['error' => 'The Hardcover API is not configured.'], 503);
 try {
-    $saved = saveBook($pdo, fetchHardcoverBook((int)$hardcoverId, $token), $status);
+    $saved = saveBook($pdo, fetchHardcoverBook((int)$hardcoverId, $token), $status, $sessionDetails);
     respond($saved, 201);
 } catch (Throwable $exception) {
     respond(['error' => 'The book could not be saved.'], 500);
