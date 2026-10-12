@@ -105,7 +105,7 @@ async function showToast(message, variant) {
                     <li class="nav-item">
                         <button :aria-label="'Sync with Hardcover'"
                             :disabled="syncing"
-                            class="btn btn-sm btn-outline-light sync-button"
+                            class="btn btn-sm sync-button nav-link"
                             title="Sync with Hardcover"
                             type="button"
                             @click="syncBooks">
@@ -134,13 +134,34 @@ async function showToast(message, variant) {
 </template>
 
 <style scoped>
+.sync-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sync-button:hover {
+    animation: sync-hover 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes sync-hover {
+    to {
+        transform: translateY(-4px);
+    }
+}
+
 .sync-toast-container {
     z-index: 1090;
     margin-top: 3.5rem;
 }
 
 .sync-icon {
-    display: inline-block;
+    line-height: 1;
+    display: inline-grid;
+    width: 1em;
+    transform-origin: center;
+    place-items: center;
+    aspect-ratio: 1;
 }
 
 .sync-icon--spinning {

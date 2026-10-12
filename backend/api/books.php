@@ -11,7 +11,7 @@ declare(strict_types=1);
  * 404 for missing Hardcover books, and 502/503 for upstream/configuration errors.
  */
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
-const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dnf'];
+const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'paused', 'dnf'];
 
 /**
  * Sends a JSON response and stops execution immediately.

@@ -1,9 +1,10 @@
 <script setup>
-import {computed, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import {removeBookStatus, saveBookStatus} from "@/api/books";
 
 const isFlipped = ref(false);
 const isMenuOpen = ref(false);
+const dropdownElement = ref(null);
 const pending = ref(false);
 const errorMessage = ref("");
 
@@ -27,6 +28,7 @@ const statusOptions = [
     {value: "want_to_read", label: "Want to read"},
     {value: "reading", label: "Reading"},
     {value: "finished", label: "Finished"},
+    {value: "paused", label: "Paused"},
     {value: "dnf", label: "Did not finish"},
 ];
 const currentStatus = computed(() => props.book.status ?? null);
@@ -128,6 +130,38 @@ async function selectStatus(status) {
 function mainStatusAction() {
     if (currentStatus.value === null) selectStatus("want_to_read");
 }
+
+/**
+ * Closes the status dropdown when clicking outside it.
+ */
+function handleOutsideClick(event) {
+    if (
+        isMenuOpen.value &&
+        dropdownElement.value &&
+        !dropdownElement.value.contains(event.target)
+    ) {
+        isMenuOpen.value = false;
+    }
+}
+
+/**
+ * Closes the status dropdown when pressing Escape.
+ */
+function handleEscape(event) {
+    if (event.key === "Escape" && isMenuOpen.value) {
+        isMenuOpen.value = false;
+    }
+}
+
+onMounted(() => {
+    document.addEventListener("pointerdown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+});
+
+onUnmounted(() => {
+    document.removeEventListener("pointerdown", handleOutsideClick);
+    document.removeEventListener("keydown", handleEscape);
+});
 </script>
 
 <template>
@@ -191,9 +225,9 @@ function mainStatusAction() {
             </div>
         </div>
         <hr class="m-0 mb-2"/>
-        <div class="mt-auto d-flex flex-wrap justify-content-evenly m-2 gap-2">
-            <div class="dropdown" @click.stop>
-                <div class="btn-group" role="group">
+        <div class="mt-auto d-flex flex-wrap align-items-stretch justify-content-evenly m-2 gap-2">
+            <div ref="dropdownElement" class="dropdown" @click.stop>
+                <div class="btn-group w-100 h-100" role="group">
                     <button :class="statusButtonClass"
                         :disabled="pending"
                         class="btn btn-sm"
@@ -228,7 +262,7 @@ function mainStatusAction() {
                     type="button"
                     @click="emit('add-to-list', book)"
                 >
-                    Add to list
+                    <i class="bi bi-plus-lg"></i> List
                 </button>
             </div>
         </div>
@@ -237,6 +271,7 @@ function mainStatusAction() {
 </template>
 
 <style lang="scss" scoped>
+
 
 h2 {
     font-size: 1.5rem;
@@ -258,6 +293,16 @@ h3 {
     // Let the status menu escape the card while the cover keeps its own clipping.
     flex-direction: column;
     perspective: 1000px;
+
+    .dropdown,
+    .btn-group {
+        display: flex;
+
+    }
+
+    .btn {
+        align-self: stretch;
+    }
 }
 
 .book-card.dropdown-open {

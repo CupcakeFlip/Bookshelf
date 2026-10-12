@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS user_books
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     -- A single-user installation needs only one status row per book.
     book_id       INT UNSIGNED                                        NOT NULL UNIQUE,
-    status        ENUM ('want_to_read', 'reading', 'finished', 'dnf') NOT NULL DEFAULT 'want_to_read',
+    status        ENUM ('want_to_read', 'reading', 'finished', 'paused', 'dnf') NOT NULL DEFAULT 'want_to_read',
     rating        TINYINT UNSIGNED                                    NULL,
     date_started  DATE                                                NULL,
     date_finished DATE                                                NULL,
@@ -103,6 +103,19 @@ CREATE TABLE IF NOT EXISTS user_books
     updated_at    TIMESTAMP                                           NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT chk_user_books_rating CHECK (rating IS NULL OR rating BETWEEN 1 AND 5),
     CONSTRAINT fk_user_books_book
+        FOREIGN KEY (book_id) REFERENCES books (id)
+            ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Owned formats are independent of reading status and may exist without user_books.
+CREATE TABLE IF NOT EXISTS user_book_formats
+(
+    book_id INT UNSIGNED NOT NULL,
+    format  ENUM ('physical', 'ebook', 'audiobook') NOT NULL,
+    PRIMARY KEY (book_id, format),
+    CONSTRAINT fk_user_book_formats_book
         FOREIGN KEY (book_id) REFERENCES books (id)
             ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB
