@@ -1,7 +1,8 @@
 <script setup>
-import {onMounted, ref} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import Navbar from "@/components/Navbar.vue";
+import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 
 const route = useRoute();
 
@@ -27,14 +28,27 @@ async function fetchBook() {
   }
 }
 
-onMounted(fetchBook);
+function handleStatusChange({book: updatedBook, status}) {
+  book.value = {
+    ...book.value,
+    ...updatedBook,
+    status,
+  };
+}
+
+onMounted(() => {
+  fetchBook();
+  window.addEventListener("bookshelf:books-synced", fetchBook);
+
+});
+onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBook));
 </script>
 
 <template>
   <Navbar/>
 
   <main class="container-xl py-4 book-details">
-    <div class="row g-4">
+    <div class="wrapper">
       <section v-if="loading">
         <p>Loading book...</p>
       </section>
@@ -135,43 +149,10 @@ onMounted(fetchBook);
             <section class="card book-details__status">
               <div class="card-body">
                 <h2 class="card-title h6">Status</h2>
-                <div ref="dropdownElement" class="dropdown" @click.stop>
-                  <div class="btn-group w-100" role="group">
-                    <button
-                      :class="statusButtonClass"
-                      :disabled="pending"
-                      class="btn btn-sm"
-                      type="button"
-                      @click="mainStatusAction"
-                    >
-                      {{ statusLabel }}
-                    </button>
-                    <button
-                      :aria-expanded="isMenuOpen"
-                      :class="statusButtonClass"
-                      :disabled="pending"
-                      class="btn btn-sm dropdown-toggle dropdown-toggle-split"
-                      type="button"
-                      @click="isMenuOpen = !isMenuOpen"
-                    >
-                      <span class="visually-hidden">
-                        Toggle reading status
-                      </span>
-                    </button>
-                  </div>
-                  <ul v-if="isMenuOpen" class="dropdown-menu show">
-                    <li v-for="option in statusOptions" :key="option.value">
-                      <button
-                        :class="{ active: currentStatus === option.value }"
-                        class="dropdown-item"
-                        type="button"
-                        @click="selectStatus(option.value)"
-                      >
-                        {{ option.label }}
-                      </button>
-                    </li>
-                  </ul>
-                </div>
+                <BookStatusDropdown
+                  :book="book"
+                  @status-change="handleStatusChange"
+                />
               </div>
             </section>
             <!-- Reading history -->
