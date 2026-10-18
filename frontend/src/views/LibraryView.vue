@@ -11,19 +11,13 @@ const books = ref([]);
  * @param {{book: Object, status: string|null}} change Updated book and status.
  * @returns {void}
  */
-function updateBook({book, status}) {
-  if (status === null) {
-    books.value = books.value.filter(
-      item => item.hardcover_id !== book.hardcover_id
-    );
-  } else {
-    const index = books.value.findIndex(
-      item => item.hardcover_id === book.hardcover_id
-    );
+function updateBook({book}) {
+  const index = books.value.findIndex(
+    item => String(item.hardcover_id) === String(book.hardcover_id)
+  );
 
-    if (index >= 0) {
-      books.value[index] = book;
-    }
+  if (index >= 0) {
+    books.value[index] = book;
   }
 }
 

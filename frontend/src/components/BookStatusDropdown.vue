@@ -91,7 +91,7 @@ async function selectStatus(status) {
         ? await removeBookStatus(props.book)
         : await saveBookStatus(props.book, status);
     emit("status-change", {
-      book: saved.status === undefined ? {...props.book, status} : saved,
+      book: {...props.book, ...saved, status},
       status,
       previous,
     });
@@ -195,4 +195,24 @@ watch(isMenuOpen, (isOpen) => {
   </div>
 </template>
 
-<style scoped></style>
+<style lang="scss" scoped>
+.dropdown-menu {
+  z-index: 1060;
+}
+
+.btn-not-in-library {
+  color: var(--bs-btn-color) !important;
+  border-color: var(--bs-btn-border-color) !important;
+  background-color: var(--bs-btn-bg) !important;
+  --bs-btn-color: #f5ece8;
+  --bs-btn-bg: #625b58;
+  --bs-btn-border-color: #625b58;
+  --bs-btn-hover-color: #f5ece8;
+  --bs-btn-hover-bg: #756c68;
+  --bs-btn-hover-border-color: #756c68;
+  --bs-btn-active-color: #f5ece8;
+  --bs-btn-active-bg: #504a47;
+  --bs-btn-active-border-color: #504a47;
+}
+
+</style>

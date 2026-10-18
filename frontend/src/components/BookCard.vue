@@ -4,7 +4,6 @@ import {formatAuthors} from "@/utils/bookFormatting";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 
 const isFlipped = ref(false);
-const errorMessage = ref("");
 const isMenuOpen = ref(false);
 
 /**
@@ -22,7 +21,6 @@ const isMenuOpen = ref(false);
 const props = defineProps({book: {type: Object, required: true}});
 /** User actions that the parent view can handle. */
 const emit = defineEmits([
-  "open",
   "status-change",
   "add-to-list"
 ]);
@@ -150,9 +148,7 @@ const description = computed(() => props.book.description ?? "");
         </button>
       </div>
     </div>
-    <p v-if="errorMessage" class="px-2 mb-2 text-danger small" role="alert">
-      {{ errorMessage }}
-    </p>
+
   </article>
 </template>
 
@@ -192,24 +188,6 @@ h3 {
   z-index: 1050;
 }
 
-.dropdown-menu {
-  z-index: 1060;
-}
-
-.btn-not-in-library {
-  color: var(--bs-btn-color) !important;
-  border-color: var(--bs-btn-border-color) !important;
-  background-color: var(--bs-btn-bg) !important;
-  --bs-btn-color: #f5ece8;
-  --bs-btn-bg: #625b58;
-  --bs-btn-border-color: #625b58;
-  --bs-btn-hover-color: #f5ece8;
-  --bs-btn-hover-bg: #756c68;
-  --bs-btn-hover-border-color: #756c68;
-  --bs-btn-active-color: #f5ece8;
-  --bs-btn-active-bg: #504a47;
-  --bs-btn-active-border-color: #504a47;
-}
 
 .book-card__cover-wrapper {
   border-radius: 0.8rem 0.8rem 0 0;
