@@ -72,6 +72,13 @@ Currently Reading, Finished, Paused, and Did Not Finish using
 `lists` tables. Selecting one opens `/lists/:status`, where its books are
 loaded from `books.php` in newest `user_books.updated_at` order.
 
+Library and automatic list detail pages support debounced title/author search,
+multiple genre filters, and selectable sorting. The books API accepts optional
+`q`, `status`, `genres` (comma-separated genre IDs), and `sort` parameters.
+Supported sort values are `recently_updated_desc`, `recently_updated_asc`,
+`title_asc`, `title_desc`, `release_date_desc`, `release_date_asc`,
+`author_asc`, and `author_desc`.
+
 Lister og deres bøger håndteres via:
 
 ```text
