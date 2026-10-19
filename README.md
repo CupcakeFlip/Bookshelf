@@ -66,6 +66,12 @@ PHP bruger kun Hardcover-ID'et fra requesten og henter de autoritative bogdetalj
 
 ## Lister
 
+The Lists page automatically groups library books into Want to Read,
+Currently Reading, Finished, Paused, and Did Not Finish using
+`user_books.status`. These lists are virtual and are not stored in the manual
+`lists` tables. Selecting one opens `/lists/:status`, where its books are
+loaded from `books.php` in newest `user_books.updated_at` order.
+
 Lister og deres bøger håndteres via:
 
 ```text

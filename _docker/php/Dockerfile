@@ -7,4 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && a2enmod rewrite
 
+# Use a valid Danish timezone identifier for PHP date and session timestamps.
+RUN printf 'date.timezone = Europe/Copenhagen\n' > /usr/local/etc/php/conf.d/99-bookshelf-timezone.ini
+
 WORKDIR /var/www/html

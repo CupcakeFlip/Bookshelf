@@ -1,0 +1,6 @@
+<script setup>
+import {computed,onMounted,onUnmounted,ref} from "vue"; import {useRoute} from "vue-router"; import Navbar from "@/components/Navbar.vue"; import BookGrid from "@/components/BookGrid.vue";
+const route=useRoute(), names={want_to_read:"Want to Read",reading:"Currently Reading",finished:"Finished",paused:"Paused",dnf:"Did Not Finish"}; const status=computed(()=>String(route.params.status??"")),title=computed(()=>names[status.value]??""); const books=ref([]),loading=ref(true),error=ref("");
+async function fetchBooks(){if(!title.value){loading.value=false;return}try{const r=await fetch(`/api/books.php?status=${status.value}`);const p=await r.json().catch(()=>({}));if(!r.ok)throw Error(p.error||"Could not load this list.");books.value=Array.isArray(p)?p:[]}catch(e){error.value=e.message}finally{loading.value=false}} onMounted(()=>{fetchBooks();window.addEventListener("bookshelf:books-synced",fetchBooks)});onUnmounted(()=>window.removeEventListener("bookshelf:books-synced",fetchBooks));
+</script>
+<template><Navbar/><main class="container py-4"><h1 v-if="title">{{title}}</h1><p v-if="!title" class="alert alert-danger">This reading list does not exist.</p><p v-else-if="loading">Loading books...</p><p v-else-if="error" class="alert alert-danger">{{error}}</p><BookGrid v-else :books="books" @status-change="fetchBooks"/></main></template>
