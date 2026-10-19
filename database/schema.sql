@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS books
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     external_api_id VARCHAR(255)  NULL UNIQUE,
     title           VARCHAR(255)  NOT NULL,
+    headline        TEXT          NULL,
     description     TEXT          NULL,
     cover_url       VARCHAR(2048) NULL,
     release_date    DATE          NULL,

@@ -97,6 +97,19 @@ eksisterende tilknytninger. Sletning af en liste sletter også dens
 
 ## Reading history
 
+  Book metadata keeps Hardcover's optional `headline` and `description` as
+  separate fields. Both are refreshed by manual metadata synchronization and
+  are displayed in that order on Book Details and the reusable BookCard. When a
+  description repeats the headline at its beginning, the repeated prefix is
+  removed only for display; the stored fields remain unchanged.
+
+  Metadata synchronization selects every existing book with a valid Hardcover
+  ID and reports `selected`, `processed`, `updated`, `unchanged`, and `failed`.
+  An updated count means at least one shared metadata or relationship changed;
+  unchanged means the book was successfully checked and required no change;
+  failed means the book could not be checked or persisted. API and database
+  errors are included per book without exposing the Hardcover token.
+
 Reading history is stored in `reading_sessions`, independently of the current
 `user_books.status` and of owned formats in `user_book_formats`. Apply
 `database/migrations/002_reading_sessions.sql` to an existing database; it is
@@ -119,8 +132,9 @@ Example session payload:
 {"hardcover_id":1286648,"status":"dnf","start_date":"2026-10-01","start_date_precision":"day","finish_date":"2026-10-12","finish_date_precision":"day","formats":["ebook"],"dnf_progress_type":"percentage","dnf_progress_value":40}
 ```
 
-Dates are stored as normalized SQL dates with a separate `day`, `month`,
-`year`, or `unknown` precision. DNF progress supports `percentage`, positive
+Dates are entered as separate year, month, and day fields. The API infers and
+stores `day`, `month`, `year`, or `unknown` precision without inventing missing
+values. DNF progress supports `percentage`, positive
 `page` values, or non-negative audiobook `time` values in minutes. Changing a
 book through `books.php` creates, pauses, resumes, completes, or abandons the
 active session transactionally; cancelling a future completion form makes no
@@ -129,6 +143,14 @@ request and therefore changes no status.
 Only one `reading` or `paused` session can exist for a book. This is protected
 by row locks on the canonical `books` row in every API transaction that can
 create or change a session.
+The Finished status dialog is shared by every `BookStatusDropdown` instance,
+including cards in the Library and Frontpage. It supplies optional local-date
+defaults and sends only the API session fields; cancelling it leaves the book
+status unchanged.
+Selecting DNF uses the same shared dialog. It records an optional stopped date,
+optional format, and at most one optional progress value: percentage, page, or
+time stored as total minutes for audiobook progress. An active reading session
+is updated in place; otherwise a new DNF session is created.
 Editing or deleting an active session reconciles `user_books.status`; editing
 or deleting a historical session does not. Removing a book from the library
 abandons an active session before deleting only its `user_books` association.

@@ -59,7 +59,7 @@ async function syncBooks() {
             ? "info"
             : "success";
     await showToast(
-      `${updated} updated, ${unchanged} unchanged, ${failed} failed.`,
+      data.message || `${updated} updated, ${unchanged} unchanged, ${failed} failed.`,
       variant,
     );
 

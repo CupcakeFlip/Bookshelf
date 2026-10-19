@@ -185,6 +185,7 @@ function normalizeBook(mixed $book, ?array $details = null): array
     return [
         'hardcover_id' => firstValue([$book['id'] ?? null, $book['book_id'] ?? null]),
         'title' => firstValue([$book['title'] ?? null, $book['name'] ?? null]),
+        'headline' => firstValue([$details['headline'] ?? null, $book['headline'] ?? null]),
         'description' => firstValue([$details['description'] ?? null, $book['description'] ?? null]),
         'authors' => normalizeAuthors($contributions !== [] ? $contributions : $authorNames),
         'cover_url' => firstValue([
@@ -220,6 +221,7 @@ function fetchBookDetails(int $bookId, string $token): ?array
 query BookDetail($id: Int!) {
   books_by_pk(id: $id) {
     id
+    headline
     description
     cached_tags
   }

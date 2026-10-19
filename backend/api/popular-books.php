@@ -145,6 +145,7 @@ function normalizeBook(array $book): array
         'id' => (int)$book['id'],
         'hardcover_id' => (string)$book['id'],
         'title' => $book['title'] ?? '',
+        'headline' => $book['headline'] ?? null,
         'description' => $book['description'] ?? null,
         'cover_url' => $book['cached_image'] ?? null,
         'release_date' => $book['release_date'] ?? null,
@@ -251,6 +252,7 @@ query PopularBookDetails($ids: [Int!]!) {
     books(where: {id: {_in: $ids}}) {
         id
         title
+        headline
         description
         release_date
         cached_image(path: "url")
