@@ -32,8 +32,8 @@ $secondary: #4f6789;
 
 $success: #526b4f; // Finished
 $warning: #8a5738; // Reading
-$danger: #7f4646;  // DNF
-$info: #4f6789;    // Want to read
+$danger: #7f4646; // DNF
+$info: #4f6789; // Want to read
 
 $paused: #675a83;
 
@@ -130,6 +130,9 @@ $navbar-dark-active-color: $text-main;
 $navbar-dark-brand-color: $text-main;
 $navbar-dark-brand-hover-color: $text-main;
 
+$navbar-toggler-focus-width: 0.05rem;
+
+
 $nav-link-color: $text-muted;
 $nav-link-hover-color: $text-main;
 
@@ -156,13 +159,13 @@ $badge-border-radius: 999px;
 // -------------------------------------------------
 
 $custom-theme-colors: (
-    "want-read": #4f6789,
-    "reading": #8a5738,
-    "finished": #526b4f,
-    "paused": #675a83,
-    "dnf": #7f4646,
-    "surface": #221918,
-    "surface-2": #2e2221
+  "want-read": #4f6789,
+  "reading": #8a5738,
+  "finished": #526b4f,
+  "paused": #675a83,
+  "dnf": #7f4646,
+  "surface": #221918,
+  "surface-2": #2e2221
 );
 
 $theme-colors: map-merge($theme-colors, $custom-theme-colors);
@@ -182,31 +185,31 @@ $theme-colors: map-merge($theme-colors, $custom-theme-colors);
 // -------------------------------------------------
 
 html {
-    color-scheme: dark;
+  color-scheme: dark;
 }
 
 body {
-    background-color: $bg-main;
-    color: $text-main;
+  color: $text-main;
+  background-color: $bg-main;
 }
 
 a {
-    text-decoration: none;
+  text-decoration: none;
 
-    &:hover,
-    &:focus {
-        text-decoration: underline;
-    }
+  &:hover,
+  &:focus {
+    text-decoration: underline;
+  }
 }
 
 .text-muted,
 .text-body-secondary {
-    color: $text-muted !important;
+  color: $text-muted !important;
 }
 
 hr {
-    border-color: $border-soft;
-    opacity: 1;
+  opacity: 1;
+  border-color: $border-soft;
 }
 
 
@@ -215,11 +218,11 @@ hr {
 // -------------------------------------------------
 
 .bg-surface {
-    background-color: $bg-surface !important;
+  background-color: $bg-surface !important;
 }
 
 .bg-surface-2 {
-    background-color: $bg-surface-2 !important;
+  background-color: $bg-surface-2 !important;
 }
 
 .card,
@@ -227,16 +230,16 @@ hr {
 .dropdown-menu,
 .offcanvas,
 .list-group-item {
-    background-color: $bg-surface;
-    color: $text-main;
-    border-color: $border-soft;
+  color: $text-main;
+  border-color: $border-soft;
+  background-color: $bg-surface;
 }
 
 .card-header,
 .card-footer,
 .modal-header,
 .modal-footer {
-    border-color: $border-soft;
+  border-color: $border-soft;
 }
 
 
@@ -245,61 +248,72 @@ hr {
 // -------------------------------------------------
 
 .navbar {
-    background-color: $bg-surface !important;
-    border-bottom: 1px solid $border-soft;
+  border-bottom: 1px solid $border-soft;
+  background-color: $bg-surface !important;
 }
 
 .navbar-brand,
 .navbar .nav-link {
-    color: $text-main;
+  color: $text-main;
 }
 
 .navbar .nav-link {
-    opacity: .8;
+  opacity: .8;
 
-    &:hover,
-    &:focus,
-    &.active {
-        color: $text-main;
-        opacity: 1;
-    }
+  &:hover,
+  &:focus,
+  &.active {
+    opacity: 1;
+    color: $text-main;
+  }
 }
 
+.navbar-toggler-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.navbar-toggler {
+  padding: .5rem 0.75rem;
+}
 
 // -------------------------------------------------
 // Main buttons
 // -------------------------------------------------
 
 .btn-primary {
-    --bs-btn-color: #{$text-main};
-    --bs-btn-bg: #{$primary};
-    --bs-btn-border-color: #{$primary};
+  --bs-btn-color: #{$text-main};
+  --bs-btn-bg: #{$primary};
+  --bs-btn-border-color: #{$primary};
 
-    --bs-btn-hover-color: #{$text-main};
-    --bs-btn-hover-bg: #{$primary-hover};
-    --bs-btn-hover-border-color: #{$primary-hover};
+  --bs-btn-hover-color: #{$text-main};
+  --bs-btn-hover-bg: #{$primary-hover};
+  --bs-btn-hover-border-color: #{$primary-hover};
 
-    --bs-btn-active-color: #{$text-main};
-    --bs-btn-active-bg: #{$primary-active};
-    --bs-btn-active-border-color: #{$primary-active};
+  --bs-btn-active-color: #{$text-main};
+  --bs-btn-active-bg: #{$primary-active};
+  --bs-btn-active-border-color: #{$primary-active};
 
-    --bs-btn-disabled-color: #{$text-main};
-    --bs-btn-disabled-bg: #{$primary};
-    --bs-btn-disabled-border-color: #{$primary};
+  --bs-btn-disabled-color: #{$text-main};
+  --bs-btn-disabled-bg: #{$primary};
+  --bs-btn-disabled-border-color: #{$primary};
 }
 
 .btn-secondary {
-    --bs-btn-color: #{$text-main};
-    --bs-btn-bg: #{$secondary};
-    --bs-btn-border-color: #{$secondary};
+  --bs-btn-color: #{$text-main};
+  --bs-btn-bg: #{$secondary};
+  --bs-btn-border-color: #{$secondary};
 
-    --bs-btn-hover-color: #{$text-main};
-    --bs-btn-hover-bg: #{$secondary-hover};
-    --bs-btn-hover-border-color: #{$secondary-hover};
+  --bs-btn-hover-color: #{$text-main};
+  --bs-btn-hover-bg: #{$secondary-hover};
+  --bs-btn-hover-border-color: #{$secondary-hover};
 
-    --bs-btn-active-color: #{$text-main};
-    --bs-btn-active-bg: #{$secondary-active};
-    --bs-btn-active-border-color: #{$secondary-active};
+  --bs-btn-active-color: #{$text-main};
+  --bs-btn-active-bg: #{$secondary-active};
+  --bs-btn-active-border-color: #{$secondary-active};
 }
 
 
@@ -309,79 +323,79 @@ hr {
 
 .status-badge,
 .btn-status {
-    color: $text-main !important;
-    font-weight: 600;
-    border: 0;
+  font-weight: 600;
+  color: $text-main !important;
+  border: 0;
 }
 
 .status-badge {
-    border-radius: 999px;
-    padding: .5em .8em;
+  padding: .5em .8em;
+  border-radius: 999px;
 }
 
 .status-want-read,
 .btn-want-read,
 .text-bg-want-read {
-    background-color: #4f6789 !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: #4f6789 !important;
 }
 
 .status-reading,
 .btn-reading,
 .text-bg-reading {
-    background-color: #8a5738 !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: #8a5738 !important;
 }
 
 .status-finished,
 .btn-finished,
 .text-bg-finished {
-    background-color: #526b4f !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: #526b4f !important;
 }
 
 .status-paused,
 .btn-paused,
 .text-bg-paused {
-    background-color: #675a83 !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: #675a83 !important;
 }
 
 .status-dnf,
 .btn-dnf,
 .text-bg-dnf {
-    background-color: #7f4646 !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: #7f4646 !important;
 }
 
 .btn-want-read:hover,
 .btn-want-read:focus {
-    background-color: $want-read-hover !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: $want-read-hover !important;
 }
 
 .btn-reading:hover,
 .btn-reading:focus {
-    background-color: $reading-hover !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: $reading-hover !important;
 }
 
 .btn-finished:hover,
 .btn-finished:focus {
-    background-color: $finished-hover !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: $finished-hover !important;
 }
 
 .btn-paused:hover,
 .btn-paused:focus {
-    background-color: $paused-hover !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: $paused-hover !important;
 }
 
 .btn-dnf:hover,
 .btn-dnf:focus {
-    background-color: $dnf-hover !important;
-    color: $text-main !important;
+  color: $text-main !important;
+  background-color: $dnf-hover !important;
 }
 
 
@@ -391,45 +405,45 @@ hr {
 
 .form-control,
 .form-select {
-    background-color: $bg-surface-2;
+  color: $text-main;
+  border-color: $border-strong;
+  background-color: $bg-surface-2;
+
+  &::placeholder {
+    opacity: 1;
+    color: $input-placeholder-color;
+  }
+
+  &:focus {
     color: $text-main;
-    border-color: $border-strong;
-
-    &::placeholder {
-        color: $input-placeholder-color;
-        opacity: 1;
-    }
-
-    &:focus {
-        background-color: $bg-surface-2;
-        color: $text-main;
-        border-color: #9b67a8;
-        box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
-    }
+    border-color: #9b67a8;
+    background-color: $bg-surface-2;
+    box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+  }
 }
 
 .form-select option {
-    background-color: $bg-surface;
-    color: $text-main;
+  color: $text-main;
+  background-color: $bg-surface;
 }
 
 .form-check-input {
-    background-color: $bg-surface-2;
-    border-color: $border-strong;
+  border-color: $border-strong;
+  background-color: $bg-surface-2;
 
-    &:checked {
-        background-color: $primary;
-        border-color: $primary;
-    }
+  &:checked {
+    border-color: $primary;
+    background-color: $primary;
+  }
 
-    &:focus {
-        border-color: #9b67a8;
-        box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
-    }
+  &:focus {
+    border-color: #9b67a8;
+    box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+  }
 }
 
 .form-label {
-    color: $text-main;
+  color: $text-main;
 }
 
 
@@ -438,23 +452,23 @@ hr {
 // -------------------------------------------------
 
 .dropdown-item {
+  color: $text-main;
+
+  &:hover,
+  &:focus {
     color: $text-main;
+    background-color: $bg-surface-2;
+  }
 
-    &:hover,
-    &:focus {
-        color: $text-main;
-        background-color: $bg-surface-2;
-    }
-
-    &.active,
-    &:active {
-        color: $text-main;
-        background-color: $primary;
-    }
+  &.active,
+  &:active {
+    color: $text-main;
+    background-color: $primary;
+  }
 }
 
 .dropdown-divider {
-    border-color: $border-soft;
+  border-color: $border-soft;
 }
 
 
@@ -463,15 +477,15 @@ hr {
 // -------------------------------------------------
 
 .table {
-    --bs-table-color: #{$text-main};
-    --bs-table-bg: transparent;
-    --bs-table-border-color: #{$border-soft};
+  --bs-table-color: #{$text-main};
+  --bs-table-bg: transparent;
+  --bs-table-border-color: #{$border-soft};
 
-    --bs-table-striped-bg: rgba(255, 255, 255, .025);
-    --bs-table-striped-color: #{$text-main};
+  --bs-table-striped-bg: rgba(255, 255, 255, .025);
+  --bs-table-striped-color: #{$text-main};
 
-    --bs-table-hover-bg: rgba(255, 255, 255, .045);
-    --bs-table-hover-color: #{$text-main};
+  --bs-table-hover-bg: rgba(255, 255, 255, .045);
+  --bs-table-hover-color: #{$text-main};
 }
 
 
@@ -480,19 +494,19 @@ hr {
 // -------------------------------------------------
 
 .list-group-item-action {
+  color: $text-main;
+
+  &:hover,
+  &:focus {
     color: $text-main;
+    background-color: $bg-surface-2;
+  }
 
-    &:hover,
-    &:focus {
-        color: $text-main;
-        background-color: $bg-surface-2;
-    }
-
-    &.active {
-        background-color: $primary;
-        border-color: $primary;
-        color: $text-main;
-    }
+  &.active {
+    color: $text-main;
+    border-color: $primary;
+    background-color: $primary;
+  }
 }
 
 
@@ -501,21 +515,21 @@ hr {
 // -------------------------------------------------
 
 .pagination {
-    --bs-pagination-color: #{$text-main};
-    --bs-pagination-bg: #{$bg-surface};
-    --bs-pagination-border-color: #{$border-soft};
+  --bs-pagination-color: #{$text-main};
+  --bs-pagination-bg: #{$bg-surface};
+  --bs-pagination-border-color: #{$border-soft};
 
-    --bs-pagination-hover-color: #{$text-main};
-    --bs-pagination-hover-bg: #{$bg-surface-2};
-    --bs-pagination-hover-border-color: #{$border-soft};
+  --bs-pagination-hover-color: #{$text-main};
+  --bs-pagination-hover-bg: #{$bg-surface-2};
+  --bs-pagination-hover-border-color: #{$border-soft};
 
-    --bs-pagination-active-color: #{$text-main};
-    --bs-pagination-active-bg: #{$primary};
-    --bs-pagination-active-border-color: #{$primary};
+  --bs-pagination-active-color: #{$text-main};
+  --bs-pagination-active-bg: #{$primary};
+  --bs-pagination-active-border-color: #{$primary};
 
-    --bs-pagination-disabled-color: #{$text-muted};
-    --bs-pagination-disabled-bg: #{$bg-surface};
-    --bs-pagination-disabled-border-color: #{$border-soft};
+  --bs-pagination-disabled-color: #{$text-muted};
+  --bs-pagination-disabled-bg: #{$bg-surface};
+  --bs-pagination-disabled-border-color: #{$border-soft};
 }
 
 
@@ -524,42 +538,41 @@ hr {
 // -------------------------------------------------
 
 .book-card {
-    background-color: $bg-surface;
-    border: 1px solid $border-soft;
-    border-radius: .85rem;
-    overflow: hidden;
+  overflow: hidden;
+  transition: transform .18s ease,
+  background-color .18s ease,
+  border-color .18s ease;
+  border: 1px solid $border-soft;
+  border-radius: .85rem;
 
-    transition:
-        transform .18s ease,
-        background-color .18s ease,
-        border-color .18s ease;
+  background-color: $bg-surface;
 
-    &:hover {
-        transform: translateY(-2px);
-        background-color: $bg-surface-hover;
-        border-color: $border-strong;
-    }
+  &:hover {
+    transform: translateY(-2px);
+    border-color: $border-strong;
+    background-color: $bg-surface-hover;
+  }
 }
 
 .book-cover {
-    display: block;
-    width: 100%;
-    object-fit: cover;
+  display: block;
+  width: 100%;
+  object-fit: cover;
 }
 
 .book-title {
-    color: $text-main;
-    font-weight: 600;
+  font-weight: 600;
+  color: $text-main;
 }
 
 .book-meta {
-    color: $text-muted;
+  color: $text-muted;
 }
 
 .sidebar,
 .app-panel {
-    background-color: $bg-surface;
-    border-color: $border-soft;
+  border-color: $border-soft;
+  background-color: $bg-surface;
 }
 
 
@@ -568,10 +581,10 @@ hr {
 // -------------------------------------------------
 
 ::selection {
-    background-color: $primary;
-    color: $text-main;
+  color: $text-main;
+  background-color: $primary;
 }
 
 * {
-    scrollbar-color: $border-strong $bg-main;
+  scrollbar-color: $border-strong $bg-main;
 }

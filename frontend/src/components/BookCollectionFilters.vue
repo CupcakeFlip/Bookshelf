@@ -1,11 +1,16 @@
 <script setup>
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
-import {expandGenreIds, normalizeGenre, STANDARD_GENRES} from "@/utils/bookFormatting";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import {
+  getGenreFilterCategories,
+  normalizeGenre,
+  STANDARD_GENRES,
+} from "@/utils/bookFormatting";
 
-const props = defineProps({status: {type: String, default: ""}});
+const props = defineProps({ status: { type: String, default: "" } });
 const emit = defineEmits(["change"]);
 const query = ref(""),
   selectedGenres = ref([]),
+  selectedCategories = ref([]),
   sortField = ref("recently_updated"),
   ascending = ref(false),
   advanced = ref(false),
@@ -23,37 +28,26 @@ const sortKey = computed(
 );
 const activeAdvanced = computed(() => selectedGenres.value.length > 0);
 const standardGenres = computed(() =>
-  STANDARD_GENRES.map(name => ({
+  STANDARD_GENRES.map((name) => ({
     name,
-    matches: groupedGenres.value.find(
-      group => group.name === name
-    )?.ids ?? []
-  }))
+    matches:
+      filterCategories.value.find((group) => group.name === name)?.ids ?? [],
+  })),
 );
 const selectedStandardGenre = computed({
   get() {
     if (selectedGenres.value.length === 0) return "";
 
-    const matchingGenre = standardGenres.value.find((genre) => {
-      const ids = genre.matches;
-
-      return (
-        ids.length === selectedGenres.value.length &&
-        ids.every((id) => selectedGenres.value.includes(id))
-      );
-    });
-
-    return matchingGenre?.name ?? "";
+    return selectedCategories.value.length === 1
+      ? selectedCategories.value[0]
+      : "";
   },
 
   set(name) {
-    const genre = standardGenres.value.find(
-      (genre) => genre.name === name
-    );
+    const genre = standardGenres.value.find((genre) => genre.name === name);
 
-    selectedGenres.value = genre
-      ? [...genre.matches]
-      : [];
+    selectedCategories.value = genre ? [genre.name] : [];
+    selectedGenres.value = genre ? [...genre.matches] : [];
   },
 });
 
@@ -76,15 +70,18 @@ const groupedGenres = computed(() => {
 
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
 });
+const filterCategories = computed(() => getGenreFilterCategories(genres.value));
 
 const activeGenres = computed(() =>
-  groupedGenres.value.filter((group) =>
-    group.ids.some((id) => selectedGenres.value.includes(id)),
+  filterCategories.value.filter((group) =>
+    selectedCategories.value.includes(group.name),
   ),
 );
-const resolvedGenreIds = computed(() => expandGenreIds(selectedGenres.value, genres.value));
 
 function removeGenreGroup(group) {
+  selectedCategories.value = selectedCategories.value.filter(
+    (name) => name !== group.name,
+  );
   selectedGenres.value = selectedGenres.value.filter(
     (id) => !group.ids.includes(id),
   );
@@ -95,7 +92,8 @@ function removeGenreGroup(group) {
 function emitChange() {
   emit("change", {
     q: query.value,
-    genres: resolvedGenreIds.value,
+    genres: [],
+    categories: [...selectedCategories.value],
     sort: sortKey.value,
   });
 }
@@ -117,25 +115,24 @@ function removeGenre(id) {
 }
 
 function toggleAdvancedGenre(group) {
-  const allSelected = group.ids.every((id) =>
-    selectedGenres.value.includes(id),
-  );
-
-  if (allSelected) {
-    selectedGenres.value = selectedGenres.value.filter(
-      (id) => !group.ids.includes(id),
-    );
-  } else {
-    selectedGenres.value = [
-      ...new Set([...selectedGenres.value, ...group.ids]),
-    ];
-  }
+  const allSelected = selectedCategories.value.includes(group.name);
+  selectedCategories.value = allSelected
+    ? selectedCategories.value.filter((name) => name !== group.name)
+    : [...selectedCategories.value, group.name];
+  selectedGenres.value = [
+    ...new Set(
+      selectedCategories.value.flatMap(
+        (name) =>
+          filterCategories.value.find((item) => item.name === name)?.ids ?? [],
+      ),
+    ),
+  ];
 
   emitChange();
 }
 
 function isGenreSelected(group) {
-  return group.ids.every((id) => selectedGenres.value.includes(id));
+  return selectedCategories.value.includes(group.name);
 }
 
 function toggleDirection() {
@@ -146,6 +143,7 @@ function toggleDirection() {
 function reset() {
   query.value = "";
   selectedGenres.value = [];
+  selectedCategories.value = [];
   sortField.value = "recently_updated";
   ascending.value = false;
   emitChange();
@@ -180,35 +178,35 @@ onUnmounted(() => clearTimeout(timer));
   <section aria-label="Book collection filters" class="mb-4 book-filters">
     <div class="book-filters__bar">
       <div class="book-filters__search">
-        <label class="form-label" for="book-search">Search books</label
-        ><input
-        id="book-search"
-        v-model="query"
-        class="form-control"
-        placeholder="Title or author"
-        type="search"
-        @input="scheduleSearch"
-      />
+        <label class="form-label" for="book-search"> Search books </label>
+        <input
+          id="book-search"
+          v-model="query"
+          class="form-control"
+          placeholder="Title or author"
+          type="search"
+          @input="scheduleSearch"
+        />
       </div>
       <div>
         <label class="form-label" for="book-genre">Genre</label
         ><select
-        id="book-genre"
-        v-model="selectedStandardGenre"
-        class="form-select"
-        @change="selectGenre"
-      >
-        <option value="">All genres</option>
-
-        <option
-          v-for="genre in standardGenres"
-          :key="genre.name"
-          :disabled="genre.matches.length === 0"
-          :value="genre.name"
+          id="book-genre"
+          v-model="selectedStandardGenre"
+          class="form-select"
+          @change="selectGenre"
         >
-          {{ genre.name }}
-        </option>
-      </select>
+          <option value="">All genres</option>
+
+          <option
+            v-for="genre in standardGenres"
+            :key="genre.name"
+            :disabled="genre.matches.length === 0"
+            :value="genre.name"
+          >
+            {{ genre.name }}
+          </option>
+        </select>
       </div>
       <div class="book-filters__sort">
         <label class="form-label" for="book-sort">Sort by</label>
@@ -253,11 +251,11 @@ onUnmounted(() => clearTimeout(timer));
         >
           <i aria-hidden="true" class="bi bi-sliders2"></i> Advanced
           Filtering<span
-          v-if="activeAdvanced"
-          aria-label="Advanced filters active"
-          class="ms-1"
-        >•</span
-        >
+            v-if="activeAdvanced"
+            aria-label="Advanced filters active"
+            class="ms-1"
+            >•</span
+          >
         </button>
         <button class="btn btn-secondary btn-sm" type="button" @click="reset">
           <i aria-hidden="true" class="bi bi-arrow-counterclockwise"></i> Reset
@@ -287,9 +285,9 @@ onUnmounted(() => clearTimeout(timer));
       <fieldset>
         <legend class="form-label fs-6">Additional genres</legend>
         <p v-if="genreError" class="text-danger small">{{ genreError }}</p>
-        <div v-if="groupedGenres.length" class="d-flex flex-wrap gap-2">
+        <div v-if="filterCategories.length" class="d-flex flex-wrap gap-2">
           <label
-            v-for="genre in groupedGenres"
+            v-for="genre in filterCategories"
             :key="genre.name"
             class="mb-0 form-check form-check-inline"
           >
@@ -306,7 +304,7 @@ onUnmounted(() => clearTimeout(timer));
           </label>
         </div>
         <span v-else class="text-body-secondary small"
-        >No genres available.</span
+          >No genres available.</span
         >
       </fieldset>
     </div>
@@ -316,10 +314,9 @@ onUnmounted(() => clearTimeout(timer));
 .book-filters__bar {
   display: grid;
   align-items: end;
-  grid-template-columns: minmax(12rem, 2fr) minmax(9rem, 1fr) minmax(
-      12rem,
-      1.25fr
-    ) auto;
+  grid-template-columns:
+    minmax(12rem, 2fr) minmax(9rem, 1fr) minmax(12rem, 1.25fr)
+    auto;
   gap: 0.75rem;
 }
 

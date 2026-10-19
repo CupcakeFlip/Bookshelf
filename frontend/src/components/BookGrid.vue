@@ -2,7 +2,7 @@
 import BookCard from "./BookCard.vue";
 
 /** Books displayed as cards; an empty array produces the empty-state message. */
-defineProps({books: {type: Array, default: () => []}});
+defineProps({ books: { type: Array, default: () => [] } });
 
 /** Card events are forwarded so the page view remains the state owner. */
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
@@ -24,7 +24,7 @@ const emit = defineEmits(["open", "status-change", "add-to-list"]);
       />
     </div>
   </div>
-  <p v-else class="text-body-secondary py-5 text-center">
+  <p v-else class="py-5 text-body-secondary text-center">
     No books match your selection.
   </p>
 </template>

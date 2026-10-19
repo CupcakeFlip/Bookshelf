@@ -1,6 +1,6 @@
 <script setup>
-import {computed, ref} from "vue";
-import {formatAuthors} from "@/utils/bookFormatting";
+import { computed, ref } from "vue";
+import { formatAuthors } from "@/utils/bookFormatting";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 
 const isFlipped = ref(false);
@@ -18,12 +18,9 @@ const isMenuOpen = ref(false);
  * @property {string|null} [status] Current locally persisted reading status.
  */
 /** @type {{book: BookCardData}} */
-const props = defineProps({book: {type: Object, required: true}});
+const props = defineProps({ book: { type: Object, required: true } });
 /** User actions that the parent view can handle. */
-const emit = defineEmits([
-  "status-change",
-  "add-to-list"
-]);
+const emit = defineEmits(["status-change", "add-to-list"]);
 
 // Normalize possible API field names before displaying the book.
 const cover_url = computed(() => props.book.cover_url ?? "");
@@ -46,7 +43,6 @@ const seriesText = computed(() =>
 );
 
 const description = computed(() => props.book.description ?? "");
-
 </script>
 
 <template>
@@ -109,7 +105,7 @@ const description = computed(() => props.book.description ?? "");
             {{ seriesText }}
           </p>
 
-          <hr/>
+          <hr />
 
           <p v-if="description" class="mb-2 book-meta book-description">
             {{ description }}
@@ -127,7 +123,7 @@ const description = computed(() => props.book.description ?? "");
         </div>
       </div>
     </div>
-    <hr class="m-0 mb-2"/>
+    <hr class="m-0 mb-2" />
     <div
       class="d-flex flex-wrap mt-auto m-2 gap-2 align-items-stretch justify-content-evenly"
     >
@@ -136,7 +132,6 @@ const description = computed(() => props.book.description ?? "");
         @status-change="emit('status-change', $event)"
         @menu-toggle="isMenuOpen = $event"
       />
-
 
       <div class="btn-add-to-list">
         <button
@@ -148,7 +143,6 @@ const description = computed(() => props.book.description ?? "");
         </button>
       </div>
     </div>
-
   </article>
 </template>
 
@@ -187,7 +181,6 @@ h3 {
 .book-card.dropdown-open {
   z-index: 1050;
 }
-
 
 .book-card__cover-wrapper {
   border-radius: 0.8rem 0.8rem 0 0;
