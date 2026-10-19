@@ -77,7 +77,7 @@ onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBook
                   v-if="book.series"
                   class="mb-0 fst-italic book-details__series"
                 >
-                  {{ book.series.name }} #{{ book.series.position }}
+                  {{ book.series.name }} #{{ parseFloat(book.series.position) }}
                 </p>
                 <h1 class="mb-0 book-details__title">{{ book.title }}</h1>
                 <p class="mb-0 book-details__authors lead">

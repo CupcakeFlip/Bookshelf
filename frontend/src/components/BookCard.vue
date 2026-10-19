@@ -41,7 +41,7 @@ const position = computed(
 );
 const seriesText = computed(() =>
   name.value
-    ? name.value + (position.value ? " #" + Number(position.value, 1) : "")
+    ? name.value + (position.value ? " #" + parseFloat(position.value) : "")
     : "",
 );
 
