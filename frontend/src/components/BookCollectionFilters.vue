@@ -315,7 +315,7 @@ onUnmounted(() => clearTimeout(timer));
   display: grid;
   align-items: end;
   grid-template-columns:
-    minmax(12rem, 2fr) minmax(9rem, 1fr) minmax(12rem, 1.25fr)
+    minmax(12rem, 1.5fr) minmax(9rem, 1fr) minmax(12rem, 1.25fr)
     auto;
   gap: 0.75rem;
 }
@@ -357,15 +357,30 @@ onUnmounted(() => clearTimeout(timer));
   padding: 0;
 }
 
+.book-filters__sort {
+  .input-group > .btn {
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bi {
+    line-height: 1;
+  }
+}
+
 @media (max-width: 991.98px) {
   .book-filters__bar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+
   .book-filters__search {
-    grid-column: 1/-1;
+    grid-column: auto;
   }
+
   .book-filters__actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 }
 
