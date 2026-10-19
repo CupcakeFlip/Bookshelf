@@ -10,6 +10,7 @@ const book = ref(null);
 const loading = ref(true);
 const error = ref("");
 
+/** Loads the normalized local or external representation for the route book. */
 async function fetchBook() {
   try {
     const response = await fetch(
@@ -28,6 +29,7 @@ async function fetchBook() {
   }
 }
 
+/** Merges the child status event into the current detail record. */
 function handleStatusChange({book: updatedBook, status}) {
   book.value = {
     ...book.value,
@@ -37,6 +39,8 @@ function handleStatusChange({book: updatedBook, status}) {
 }
 
 onMounted(() => {
+  // Refresh after the global sync event because the current route may already
+  // be open when shared metadata is updated.
   fetchBook();
   window.addEventListener("bookshelf:books-synced", fetchBook);
 

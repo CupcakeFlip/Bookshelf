@@ -1,7 +1,8 @@
 <script setup>
 import Navbar from "@/components/Navbar.vue";
 
-// Statistics content will be added when this route becomes active.
+// The route currently exposes only its placeholder view; no statistics data
+// is requested until the corresponding feature is implemented.
 </script>
 
 <template>

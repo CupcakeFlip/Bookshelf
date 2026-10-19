@@ -1,4 +1,5 @@
--- Repeatable migration for existing MariaDB volumes. Existing user_books rows survive.
+-- Repeatable migration for existing MariaDB volumes. Existing reading rows
+-- remain intact; owned formats are independent and need no user_books row.
 ALTER TABLE user_books
     MODIFY COLUMN status ENUM ('want_to_read', 'reading', 'finished', 'paused', 'dnf')
         NOT NULL DEFAULT 'want_to_read';

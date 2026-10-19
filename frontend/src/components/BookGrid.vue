@@ -1,11 +1,11 @@
 <script setup>
 import BookCard from "./BookCard.vue";
 
-/** Books displayed as cards in the responsive grid. */
+/** Books displayed as cards; an empty array produces the empty-state message. */
 defineProps({books: {type: Array, default: () => []}});
 
-/** Events emitted by a card and forwarded to the parent view. */
-const emit = defineEmits(["status-change", "add-to-list"]);
+/** Card events are forwarded so the page view remains the state owner. */
+const emit = defineEmits(["open", "status-change", "add-to-list"]);
 </script>
 
 <template>

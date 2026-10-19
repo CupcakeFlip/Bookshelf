@@ -1,6 +1,8 @@
 const statusValues = ["want_to_read", "reading", "finished", "paused", "dnf"];
 const formatValues = ["physical", "ebook", "audiobook"];
 
+// The API accepts these fixed values as a contract shared by the status and
+// owned-format controls; rejecting them here avoids avoidable network calls.
 /** Searches locally saved books by title or author. */
 export async function searchLocalBooks(query = "") {
     const params = new URLSearchParams();

@@ -12,6 +12,8 @@ const popularBooks = ref([]);
 const loading = ref(false);
 const message = ref("");
 const partialError = ref("");
+// Incremented for each submitted search so a slower earlier response cannot
+// overwrite results from the query currently shown in the input.
 let searchNumber = 0;
 
 /** Combines normalized books, preferring the locally saved copy on duplicate IDs. */
@@ -52,6 +54,8 @@ async function searchBooks() {
     loading.value = true;
     message.value = "";
     partialError.value = "";
+    // A partial result is useful, so the two independent requests are settled
+    // separately instead of failing the whole search when one source errors.
     const [local, hardcover] = await Promise.allSettled([searchLocalBooks(term), searchHardcoverBooks(term)]);
     if (requestNumber !== searchNumber) return;
     const localBooks = local.status === "fulfilled" ? local.value : [];

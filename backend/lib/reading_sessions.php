@@ -6,6 +6,7 @@ const SESSION_STATUSES = ['reading', 'paused', 'finished', 'dnf', 'abandoned'];
 const SESSION_FORMATS = ['physical', 'ebook', 'audiobook'];
 const DATE_PRECISIONS = ['day', 'month', 'year', 'unknown'];
 
+/** Validates the wire-format date before it is normalized for storage. */
 function validSessionDate(mixed $value): bool
 {
     if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) return false;
@@ -13,6 +14,7 @@ function validSessionDate(mixed $value): bool
     return $date !== false && DateTimeImmutable::getLastErrors() === false;
 }
 
+/** Resolves an external Hardcover ID to the local canonical book ID. */
 function sessionBookId(PDO $pdo, mixed $hardcoverId): ?int
 {
     if (!is_scalar($hardcoverId) || !preg_match('/^[1-9][0-9]*$/', (string)$hardcoverId)) return null;
@@ -22,6 +24,7 @@ function sessionBookId(PDO $pdo, mixed $hardcoverId): ?int
     return $id === false ? null : (int)$id;
 }
 
+/** Returns formats joined to one historical reading session in stable order. */
 function sessionFormats(PDO $pdo, int $sessionId): array
 {
     $stmt = $pdo->prepare('SELECT format FROM reading_session_formats WHERE reading_session_id = ? ORDER BY format');
@@ -29,6 +32,7 @@ function sessionFormats(PDO $pdo, int $sessionId): array
     return array_column($stmt->fetchAll(), 'format');
 }
 
+/** Loads one session and expands its foreign-key values for JSON responses. */
 function sessionData(PDO $pdo, int $sessionId): ?array
 {
     $stmt = $pdo->prepare('SELECT rs.*, b.external_api_id AS hardcover_id FROM reading_sessions rs JOIN books b ON b.id = rs.book_id WHERE rs.id = ?');
@@ -41,6 +45,10 @@ function sessionData(PDO $pdo, int $sessionId): ?array
     return $session;
 }
 
+/**
+ * Validates a complete or partial session payload, including cross-field rules
+ * for dates, DNF progress, and the format required by a progress unit.
+ */
 function validateSessionPayload(array $payload, bool $partial = false): array
 {
     $allowed = ['status', 'start_date', 'start_date_precision', 'finish_date', 'finish_date_precision', 'dnf_progress_type', 'dnf_progress_value', 'formats'];
@@ -75,6 +83,7 @@ function validateSessionPayload(array $payload, bool $partial = false): array
     return $payload;
 }
 
+/** Converts month/year precision into canonical first-of-period SQL dates. */
 function normalizeSessionDates(array $data): array
 {
     foreach ([['start_date', 'start_date_precision'], ['finish_date', 'finish_date_precision']] as [$date, $precision]) {
@@ -85,6 +94,7 @@ function normalizeSessionDates(array $data): array
     return $data;
 }
 
+/** Locks the canonical book row so related status/session changes serialize. */
 function lockBook(PDO $pdo, int $bookId): void
 {
     $stmt = $pdo->prepare('SELECT id FROM books WHERE id = ? FOR UPDATE');
@@ -92,6 +102,7 @@ function lockBook(PDO $pdo, int $bookId): void
     if (!$stmt->fetchColumn()) throw new RuntimeException('Book not found.');
 }
 
+/** Keeps the current user_books status consistent with the active session. */
 function reconcileBookStatus(PDO $pdo, int $bookId, ?string $preferred = null): void
 {
     $active = activeSession($pdo, $bookId);
@@ -103,6 +114,7 @@ function reconcileBookStatus(PDO $pdo, int $bookId, ?string $preferred = null): 
     elseif (in_array($status, ['reading', 'paused'], true)) $pdo->prepare('INSERT INTO user_books (book_id, status) VALUES (?, ?)')->execute([$bookId, $status]);
 }
 
+/** Replaces session formats as a set; the caller provides transaction scope. */
 function replaceSessionFormats(PDO $pdo, int $sessionId, array $formats): void
 {
     $pdo->prepare('DELETE FROM reading_session_formats WHERE reading_session_id = ?')->execute([$sessionId]);
@@ -110,6 +122,7 @@ function replaceSessionFormats(PDO $pdo, int $sessionId, array $formats): void
     foreach (array_unique($formats) as $format) $stmt->execute([$sessionId, $format]);
 }
 
+/** Returns the newest active session, where active means reading or paused. */
 function activeSession(PDO $pdo, int $bookId): ?array
 {
     $stmt = $pdo->prepare("SELECT id FROM reading_sessions WHERE book_id = ? AND status IN ('reading', 'paused') ORDER BY id DESC LIMIT 1");

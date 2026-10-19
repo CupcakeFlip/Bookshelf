@@ -3,8 +3,18 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/books.php';
 
+/**
+ * Sends a JSON response and terminates the endpoint so no later branch can
+ * accidentally append output to the response body.
+ *
+ * @param array $payload JSON-serializable response data.
+ * @param int $status HTTP status code returned to the client.
+ * @return never
+ */
 function respond(array $payload, int $status=200): never { http_response_code($status); header('Content-Type: application/json; charset=utf-8'); echo json_encode($payload, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); exit; }
 
+// GET reads locally saved books; DELETE removes only the user's status row;
+// POST creates or updates that row and fetches shared metadata when necessary.
 $pdo=require __DIR__ . '/../settings/init.php'; $method=$_SERVER['REQUEST_METHOD']??'GET';
 if ($method==='GET') { $q=trim((string)($_GET['q']??'')); $sql='SELECT DISTINCT b.id FROM books b JOIN user_books ub ON ub.book_id=b.id LEFT JOIN book_authors ba ON ba.book_id=b.id LEFT JOIN authors a ON a.id=ba.author_id'; $params=[]; if ($q!=='') {$sql.=' WHERE b.title LIKE ? OR a.name LIKE ?'; $params=['%'.$q.'%','%'.$q.'%'];} $sql.=' ORDER BY b.id'; $s=$pdo->prepare($sql); $s->execute($params); $out=[]; foreach($s->fetchAll() as $row)$out[]=savedBook($pdo,(int)$row['id']); respond($out); }
 if ($method==='DELETE') { $id=filter_var($_GET['hardcover_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); if($id===false)respond(['error'=>'hardcover_id must be a positive integer.'],400); $bookId=sessionBookId($pdo,$id); if($bookId===null)respond(['error'=>'Book not found.'],404); $pdo->beginTransaction(); try { transitionSession($pdo,$bookId,'want_to_read'); $pdo->prepare('DELETE FROM user_books WHERE book_id=?')->execute([$bookId]); $pdo->commit(); } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack(); respond(['error'=>'The book could not be removed from the library.'],500);} respond(['status'=>null]); }

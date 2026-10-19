@@ -7,12 +7,14 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 
 import {Popover} from 'bootstrap';
 
-// Create the application shell, install routing, and mount the root component.
+// Create the single application shell, install routing, and mount the root
+// component so every view shares the same Vue instance.
 const app = createApp(App);
 app.use(router);
 app.mount('#app');
 
-// Enable Bootstrap popovers for elements that opt in through a data attribute.
+// Popovers are opt-in through a data attribute, keeping Bootstrap behavior
+// local to the elements that explicitly request it.
 document.querySelectorAll('[data-bs-toggle="popover"]').forEach(popover => {
     new Popover(popover);
 });

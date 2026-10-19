@@ -1,5 +1,7 @@
 /** Formats author values for display without changing the source data. */
 export function formatAuthors(authors) {
+    // Hardcover responses use both strings and objects, so normalize the
+    // input locally instead of changing the API response shape.
     const values = Array.isArray(authors)
         ? authors
         : typeof authors === "string"

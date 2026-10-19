@@ -5,6 +5,8 @@ import BookGrid from "@/components/BookGrid.vue";
 
 const books = ref([]);
 
+// Replace by stable external ID because local numeric IDs are not part of the
+// frontend contract and may be absent from externally sourced results.
 /**
  * Applies a status-change event after BookCard has persisted it through PHP.
  *

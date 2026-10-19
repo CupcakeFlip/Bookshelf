@@ -12,6 +12,7 @@ function respond(array $payload, int $status = 200): never
     exit;
 }
 
+/** Decodes a write request and rejects scalar, empty, or malformed JSON. */
 function requestPayload(): array
 {
     $payload = json_decode((string)file_get_contents('php://input'), true);
@@ -19,6 +20,7 @@ function requestPayload(): array
     return $payload;
 }
 
+/** Identifies a database uniqueness conflict for the one-active-session rule. */
 function conflict(Throwable $exception): bool
 {
     return $exception instanceof PDOException && (string)$exception->getCode() === '23000';
@@ -42,6 +44,8 @@ $sessionFields =
         'dnf_progress_value',
         'formats'];
 $sessionPayload = array_intersect_key($payload, array_flip($sessionFields));
+// Only whitelisted fields reach the session validator and SQL statements;
+// identifiers remain separate so a client cannot overwrite another row.
 $hardcoverId = $_GET['hardcover_id'] ?? ($payload['hardcover_id'] ?? null);
 $bookId = sessionBookId($pdo, $hardcoverId);
 if ($bookId === null && in_array($method, ['PATCH', 'PUT', 'DELETE'], true)) {
@@ -56,6 +60,8 @@ if ($bookId === null && in_array($method, ['PATCH', 'PUT', 'DELETE'], true)) {
 if ($bookId === null) respond(['error' => 'Book not found.'], 404);
 
 if ($method === 'GET') {
+    // Session IDs are fetched first, then expanded through sessionData() so
+    // the response uses one consistent representation for every endpoint.
     $stmt =
         $pdo->prepare(
             'SELECT id FROM reading_sessions WHERE book_id = ? ORDER BY COALESCE(start_date, finish_date, created_at), id'
@@ -75,6 +81,8 @@ if ($method === 'POST') {
     if (!isset($data['status'])) respond(['error' => 'status is required.'], 400);
     $pdo->beginTransaction();
     try {
+        // Lock the book before checking for an active session. This serializes
+        // competing requests and preserves the single-active-session rule.
         lockBook($pdo, $bookId);
         if (in_array($data['status'], ['reading', 'paused'], true) && activeSession($pdo, $bookId)) {
             $pdo->rollBack();

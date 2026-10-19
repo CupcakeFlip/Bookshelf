@@ -177,7 +177,9 @@ CREATE TABLE IF NOT EXISTS book_tags
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
--- Reading attempts are independent from the current user_books status.
+-- Reading attempts are historical records independent from the current
+-- user_books status. Multiple attempts can therefore coexist with one
+-- current library status.
 CREATE TABLE IF NOT EXISTS reading_sessions
 (
     id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

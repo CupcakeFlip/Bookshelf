@@ -1,4 +1,5 @@
--- Safe, repeatable migration. Existing books, statuses, dates and owned formats are preserved.
+-- Safe, repeatable migration. Existing books, statuses, dates, and owned
+-- formats are preserved while reading history is added as a separate relation.
 CREATE TABLE IF NOT EXISTS reading_sessions
 (
     id                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
