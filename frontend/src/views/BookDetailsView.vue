@@ -1,17 +1,23 @@
 <script setup>
 import {onMounted, onUnmounted, ref} from "vue";
 import {useRoute} from "vue-router";
+
+import {getOwnedFormats, updateOwnedFormats} from "@/api/books";
+
 import Navbar from "@/components/Navbar.vue";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 
 const route = useRoute();
+//const isOwned = ref(false);
 
 const book = ref(null);
 const loading = ref(true);
 const error = ref("");
+const ownedFormats = ref([]);
 
 /** Loads the normalized local or external representation for the route book. */
 async function fetchBook() {
+  ownedFormats.value = [];
   try {
     const response = await fetch(
       `/api/book-details.php?hardcover_id=${route.params.hardcoverId}`,
@@ -22,10 +28,42 @@ async function fetchBook() {
     }
 
     book.value = await response.json();
+
+    if (book.value.id) {
+      ownedFormats.value = await getOwnedFormats(book.value.id);
+    }
   } catch (err) {
     error.value = err.message;
   } finally {
     loading.value = false;
+  }
+}
+
+const formatsLoading = ref(false);
+const formatsError = ref("");
+
+async function toggleFormat(format) {
+  if (formatsLoading.value) return;
+  if (!book.value?.id) {
+    formatsError.value = "The book does not exist in the database.";
+    return;
+  }
+  const previousFormats = [...ownedFormats.value];
+  formatsLoading.value = true;
+  formatsError.value = "";
+
+  try {
+    if (ownedFormats.value.includes(format)) {
+      ownedFormats.value = ownedFormats.value.filter((item) => item !== format);
+    } else {
+      ownedFormats.value.push(format);
+    }
+    await updateOwnedFormats(book.value.id, ownedFormats.value);
+  } catch (err) {
+    formatsError.value = err.message;
+    ownedFormats.value = previousFormats;
+  } finally {
+    formatsLoading.value = false;
   }
 }
 
@@ -43,9 +81,10 @@ onMounted(() => {
   // be open when shared metadata is updated.
   fetchBook();
   window.addEventListener("bookshelf:books-synced", fetchBook);
-
 });
-onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBook));
+onUnmounted(() =>
+  window.removeEventListener("bookshelf:books-synced", fetchBook),
+);
 </script>
 
 <template>
@@ -137,13 +176,34 @@ onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBook
               <div class="card-body">
                 <h2 class="card-title h6">Format</h2>
                 <div class="d-flex flex-wrap gap-2">
-                  <button class="btn btn-sm btn-outline-primary" type="button">
+                  <button
+                    :class="
+                      ownedFormats.includes('physical') ? 'btn-primary' : 'btn-outline-primary'
+                    "
+                    class="btn btn-sm"
+                    type="button"
+                    @click="toggleFormat('physical')"
+                  >
                     Physical
                   </button>
-                  <button class="btn btn-sm btn-outline-primary" type="button">
+                  <button
+                    :class="
+                      ownedFormats.includes('ebook') ? 'btn-primary' : 'btn-outline-primary'
+                    "
+                    class="btn btn-sm"
+                    type="button"
+                    @click="toggleFormat('ebook')"
+                  >
                     E-book
                   </button>
-                  <button class="btn btn-sm btn-outline-primary" type="button">
+                  <button
+                    :class="
+                      ownedFormats.includes('audiobook') ? 'btn-primary' : 'btn-outline-primary'
+                    "
+                    class="btn btn-sm"
+                    type="button"
+                    @click="toggleFormat('audiobook')"
+                  >
                     Audiobook
                   </button>
                 </div>
