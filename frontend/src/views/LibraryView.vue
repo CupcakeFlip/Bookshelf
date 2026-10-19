@@ -1,48 +1,54 @@
 <script setup>
-import {onMounted, onUnmounted, ref} from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
-
-const books = ref([]);
-
-// Replace by stable external ID because local numeric IDs are not part of the
-// frontend contract and may be absent from externally sourced results.
-/**
- * Applies a status-change event after BookCard has persisted it through PHP.
- *
- * @param {{book: Object, status: string|null}} change Updated book and status.
- * @returns {void}
- */
-function updateBook({book}) {
-  const index = books.value.findIndex(
-    item => String(item.hardcover_id) === String(book.hardcover_id)
-  );
-
-  if (index >= 0) {
-    books.value[index] = book;
+import BookCollectionFilters from "@/components/BookCollectionFilters.vue";
+const books = ref([]),
+  loading = ref(true),
+  error = ref(""),
+  filters = ref({
+    q: "",
+    genres: [],
+    categories: [],
+    sort: "recently_updated_desc",
+  });
+let controller = null;
+async function fetchBooks(next = filters.value) {
+  filters.value = next;
+  controller?.abort();
+  controller = new AbortController();
+  loading.value = true;
+  try {
+    const p = new URLSearchParams({ q: next.q, sort: next.sort });
+    if (next.categories?.length) p.set("categories", next.categories.join(","));
+    else if (next.genres.length) p.set("genres", next.genres.join(","));
+    const r = await fetch(`/api/books.php?${p}`, { signal: controller.signal }),
+      d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Error(d.error || "Could not load the library.");
+    books.value = Array.isArray(d) ? d : [];
+  } catch (e) {
+    if (e.name !== "AbortError") error.value = e.message;
+  } finally {
+    if (!controller.signal.aborted) loading.value = false;
   }
 }
-
-/** Fetches all books that have a row in the local user_books table. */
-async function fetchBooks() {
-  const response = await fetch("/api/books.php");
-  books.value = await response.json();
-}
-
+const refreshBooks = () => fetchBooks(filters.value);
 onMounted(() => {
   fetchBooks();
-  window.addEventListener("bookshelf:books-synced", fetchBooks);
-
+  window.addEventListener("bookshelf:books-synced", refreshBooks);
 });
-onUnmounted(() => window.removeEventListener("bookshelf:books-synced", fetchBooks));
+onUnmounted(() => {
+  controller?.abort();
+  window.removeEventListener("bookshelf:books-synced", refreshBooks);
+});
 </script>
 <template>
-  <!-- BookGrid owns layout, empty-state rendering, and status event forwarding. -->
-  <Navbar/>
-  <main class="container py-4">
+  <Navbar />
+  <main class="container-xl px-4 py-4">
     <h1 class="mb-4">My Library</h1>
-    <BookGrid :books="books" @status-change="updateBook"/>
+    <BookCollectionFilters @change="fetchBooks" />
+    <p v-if="loading">Loading books...</p>
+    <p v-else-if="error" class="alert alert-danger">{{ error }}</p>
+    <BookGrid v-else :books="books" @status-change="refreshBooks" />
   </main>
 </template>
-
-<style scoped></style>
