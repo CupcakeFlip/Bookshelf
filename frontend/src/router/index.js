@@ -4,6 +4,7 @@ import ListsView from "@/views/ListsView.vue";
 import LibraryView from "@/views/LibraryView.vue";
 import StatsView from "@/views/StatsView.vue";
 import BookDetailsView from "@/views/BookDetailsView.vue";
+import ListDetailView from "@/views/ListDetailView.vue";
 
 // Define the client-side pages without full browser reloads.
 // Each route maps directly to a view; the PHP API is called by those views/components.
@@ -27,6 +28,7 @@ const router = createRouter({
       name: "stats",
       component: StatsView,
     },
+    {path: "/lists/:status", name: "list-detail", component: ListDetailView},
     {
       path: "/library",
       name: "library",

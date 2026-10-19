@@ -74,12 +74,12 @@ GRAPHQL;
 
 function normalizeSavedBook(array $book): array
 {
-    return ['id' => (int)$book['id'], 'hardcover_id' => (string)$book['external_api_id'], 'title' => $book['title'], 'description' => $book['description'], 'cover_url' => $book['cover_url'], 'release_date' => $book['release_date'], 'authors' => $book['authors'] ?? [], 'series' => $book['series_local_id'] ? ['id' => (int)$book['series_local_id'], 'hardcover_id' => (string)$book['series_external_api_id'], 'name' => $book['series_name'], 'position' => $book['series_position']] : null, 'genres' => $book['genres'] ?? [], 'lists' => $book['lists'] ?? [], 'tags' => $book['tags'] ?? [], 'status' => $book['status'] ?? null];
+    return ['id' => (int)$book['id'], 'hardcover_id' => (string)$book['external_api_id'], 'title' => $book['title'], 'description' => $book['description'], 'cover_url' => $book['cover_url'], 'release_date' => $book['release_date'], 'authors' => $book['authors'] ?? [], 'series' => $book['series_local_id'] ? ['id' => (int)$book['series_local_id'], 'hardcover_id' => (string)$book['series_external_api_id'], 'name' => $book['series_name'], 'position' => $book['series_position']] : null, 'genres' => $book['genres'] ?? [], 'lists' => $book['lists'] ?? [], 'tags' => $book['tags'] ?? [], 'status' => $book['status'] ?? null, 'updated_at' => $book['status_updated_at'] ?? null];
 }
 
 function savedBook(PDO $pdo, int $bookId): array
 {
-    $stmt = $pdo->prepare('SELECT b.*, s.id series_local_id, s.external_api_id series_external_api_id, s.name series_name, ub.status FROM books b LEFT JOIN series s ON s.id=b.series_id LEFT JOIN user_books ub ON ub.book_id=b.id WHERE b.id=?'); $stmt->execute([$bookId]); $book = $stmt->fetch();
+    $stmt = $pdo->prepare('SELECT b.*, s.id series_local_id, s.external_api_id series_external_api_id, s.name series_name, ub.status, ub.updated_at status_updated_at FROM books b LEFT JOIN series s ON s.id=b.series_id LEFT JOIN user_books ub ON ub.book_id=b.id WHERE b.id=?'); $stmt->execute([$bookId]); $book = $stmt->fetch();
     if (!$book) throw new RuntimeException('Saved book could not be loaded.');
     foreach ([
         'authors' => 'SELECT a.id, a.external_api_id hardcover_id, a.name FROM book_authors ba JOIN authors a ON a.id=ba.author_id WHERE ba.book_id=? ORDER BY a.id',

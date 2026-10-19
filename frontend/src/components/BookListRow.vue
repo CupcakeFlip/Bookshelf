@@ -1,11 +1,14 @@
 <script setup>
 import {computed} from "vue";
+import {useRouter} from "vue-router";
 
 /** List data and maximum number of preview covers to show. */
 const props = defineProps({list: {type: Object, required: true}, previewLimit: {type: Number, default: 8}});
 
 /** Emitted when the user opens a list. */
 const emit = defineEmits(["open"]);
+const router = useRouter();
+function openList() { router.push({name: "list-detail", params: {status: props.list.id}}); }
 
 /** Selects the supported preview field and limits the visible covers. */
 const preview = computed(() => (props.list.recentBooks ?? props.list.previewBooks ?? []).slice(0, props.previewLimit));
@@ -14,7 +17,7 @@ const preview = computed(() => (props.list.recentBooks ?? props.list.previewBook
 
 <template>
     <!-- The whole row is one keyboard-accessible action for opening a list. -->
-    <button class="book-list-row card w-100 text-start" type="button" @click="emit('open',list)"><span
+    <button class="book-list-row card w-100 text-start" type="button" @click="openList"><span
         class="book-list-row__title">{{
             list.title
         }}</span><span :aria-label="`${preview.length} recent books in ${list.title}`"
