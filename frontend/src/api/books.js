@@ -32,12 +32,12 @@ export async function searchHardcoverBooks(query) {
  * @returns {Promise<Object>} Normalized book returned by the API.
  * @throws {Error} When the status is invalid or the API rejects the request.
  */
-export async function saveBookStatus(book, status) {
+export async function saveBookStatus(book, status, session = {}) {
     if (!statusValues.includes(status)) throw new Error("Invalid reading status.");
     const response = await fetch("/api/books.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hardcover_id: book.hardcover_id, status }),
+        body: JSON.stringify({ hardcover_id: book.hardcover_id, status, session }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Could not save the book.");
@@ -84,4 +84,32 @@ export async function removeOwnedFormat(bookId, format = null) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Could not remove owned format.");
     return payload.formats ?? [];
+}
+
+export async function getReadingSessions(book) {
+    const response = await fetch(`/api/reading-sessions.php?hardcover_id=${encodeURIComponent(book.hardcover_id ?? book)}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not load reading history.");
+    return payload.sessions ?? [];
+}
+
+export async function createReadingSession(book, session) {
+    const response = await fetch("/api/reading-sessions.php", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({hardcover_id: book.hardcover_id ?? book, ...session})});
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not create reading session.");
+    return payload;
+}
+
+export async function updateReadingSession(sessionId, session) {
+    const response = await fetch(`/api/reading-sessions.php?id=${encodeURIComponent(sessionId)}`, {method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify(session)});
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not update reading session.");
+    return payload;
+}
+
+export async function deleteReadingSession(sessionId) {
+    const response = await fetch(`/api/reading-sessions.php?id=${encodeURIComponent(sessionId)}`, {method: "DELETE"});
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Could not delete reading session.");
+    return payload;
 }
