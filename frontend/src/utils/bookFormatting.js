@@ -57,6 +57,21 @@ const GENRE_ALIASES = new Map([
 
 ].map(([alias, genre]) => [genreKey(alias), genre]));
 
+// Explicit category membership avoids guessing from words in genre names.
+const GENRE_CATEGORIES = {
+  Fantasy: [
+    "Fantasy",
+    "Fantasy Romance",
+    "Romantasy",
+    "Epic Fantasy",
+    "Urban Fantasy",
+    "Dark Fantasy",
+    "High Fantasy",
+    "Paranormal Fantasy"
+  ],
+  Romance: ["Romance", "Fantasy Romance", "Romantasy", "Dark Romance", "Contemporary Romance", "Paranormal Romance"],
+};
+
 function genreKey(value) {
   return String(value ?? "")
     .trim()
@@ -119,4 +134,18 @@ export function filterBooksByGenre(books, selectedGenre) {
   );
 }
 
-export {STANDARD_GENRES};
+export function expandGenreIds(selectedIds, availableGenres) {
+  const selected = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(Number));
+  const available = Array.isArray(availableGenres) ? availableGenres : [];
+  for (const id of [...selected]) {
+    const genre = available.find(item => Number(item?.id) === id);
+    const category = Object.entries(GENRE_CATEGORIES)
+      .find(([name]) => normalizeGenre(name) === normalizeGenre(genre?.name));
+    if (!category) continue;
+    const names = new Set(category[1].map(normalizeGenre));
+    for (const item of available) if (names.has(normalizeGenre(item?.name))) selected.add(Number(item.id));
+  }
+  return [...selected];
+}
+
+export {GENRE_CATEGORIES, STANDARD_GENRES};

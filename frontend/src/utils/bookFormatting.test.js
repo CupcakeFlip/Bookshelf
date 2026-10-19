@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {filterBooksByGenre, formatAuthors, getGenreOptions, normalizeGenre, normalizeGenres,} from "./bookFormatting";
+import {expandGenreIds, filterBooksByGenre, formatAuthors, getGenreOptions, normalizeGenre, normalizeGenres,} from "./bookFormatting";
 
 describe("formatAuthors", () => {
   it.each([
@@ -110,5 +110,24 @@ describe("filterBooksByGenre", () => {
     const result = filterBooksByGenre(books, "Fantasy");
     expect(result).not.toBe(books);
     expect(books).toHaveLength(3);
+  });
+});
+
+describe("genre categories", () => {
+  const genres = [
+    {id: 1, name: "Fantasy"}, {id: 2, name: "Fantasy Romance"},
+    {id: 3, name: "Romantasy"}, {id: 4, name: "Romance"},
+    {id: 5, name: "sci-fi"},
+  ];
+
+  it("expands Fantasy and Romance independently with overlapping subgenres", () => {
+    expect(expandGenreIds([1], genres)).toEqual([1, 2, 3]);
+    expect(expandGenreIds([4], genres)).toEqual([4, 2, 3]);
+    expect(expandGenreIds([1, 4], genres)).toEqual([1, 4, 2, 3]);
+  });
+
+  it("keeps a specific subgenre independent and normalizes aliases", () => {
+    expect(expandGenreIds([2], genres)).toEqual([2]);
+    expect(expandGenreIds([5], genres)).toEqual([5]);
   });
 });
