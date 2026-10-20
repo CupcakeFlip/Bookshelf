@@ -188,6 +188,43 @@ function savedBook(PDO $pdo, int $bookId): array
     return normalizeSavedBook($book);
 }
 
+function savedBooks(PDO $pdo, array $bookIds): array
+{
+    if (!$bookIds) {
+        return [];
+    }
+    $marks = implode(',', array_fill(0, count($bookIds), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT b.*, s.id series_local_id, s.external_api_id series_external_api_id, s.name series_name, ub.status, ub.updated_at status_updated_at FROM books b LEFT JOIN series s ON s.id=b.series_id LEFT JOIN user_books ub ON ub.book_id=b.id WHERE b.id IN ($marks)"
+    );
+    $stmt->execute($bookIds);
+    $books = [];
+    foreach ($stmt->fetchAll() as $book) {
+        $book['authors'] = $book['genres'] = $book['lists'] = $book['tags'] = [];
+        $books[(int)$book['id']] = $book;
+    }
+    foreach ([
+        'authors' => 'SELECT ba.book_id, a.id, a.external_api_id hardcover_id, a.name FROM book_authors ba JOIN authors a ON a.id=ba.author_id',
+        'genres' => 'SELECT bg.book_id, g.id, g.name, g.slug FROM book_genres bg JOIN genres g ON g.id=bg.genre_id',
+        'lists' => 'SELECT bl.book_id, l.id, l.name, l.description FROM book_lists bl JOIN lists l ON l.id=bl.lists_id',
+        'tags' => 'SELECT bt.book_id, t.id, t.name, t.slug FROM book_tags bt JOIN tags t ON t.id=bt.tags_id',
+    ] as $key => $sql) {
+        $order = $key === 'authors' || $key === 'genres' ? 'id' : 'name,id';
+        $stmt = $pdo->prepare("$sql WHERE book_id IN ($marks) ORDER BY book_id,$order");
+        $stmt->execute($bookIds);
+        foreach ($stmt->fetchAll() as $row) {
+            $id = (int)$row['book_id'];
+            unset($row['book_id']);
+            $books[$id][$key][] = $row;
+        }
+    }
+    $out = [];
+    foreach ($bookIds as $id) {
+        $out[] = normalizeSavedBook($books[$id]);
+    }
+    return $out;
+}
+
 function findSavedBookByHardcoverId(PDO $pdo, int $hardcoverId): ?array
 {
     $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id=?');

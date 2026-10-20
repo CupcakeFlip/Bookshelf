@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Frontpage from "@/views/Frontpage.vue";
-import ListsView from "@/views/ListsView.vue";
-import LibraryView from "@/views/LibraryView.vue";
-import StatsView from "@/views/StatsView.vue";
-import BookDetailsView from "@/views/BookDetailsView.vue";
-import ListDetailView from "@/views/ListDetailView.vue";
+const ListsView = () => import("@/views/ListsView.vue");
+const LibraryView = () => import("@/views/LibraryView.vue");
+const StatsView = () => import("@/views/StatsView.vue");
+const BookDetailsView = () => import("@/views/BookDetailsView.vue");
+const ListDetailView = () => import("@/views/ListDetailView.vue");
 
 // Define the client-side pages without full browser reloads.
 // Each route maps directly to a view; the PHP API is called by those views/components.

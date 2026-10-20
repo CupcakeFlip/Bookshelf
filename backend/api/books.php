@@ -152,11 +152,7 @@ if ($method === 'GET') {
     $sql .= ' ORDER BY ' . $sorts[$sort];
     $s = $pdo->prepare($sql);
     $s->execute($params);
-    $out = [];
-    foreach ($s->fetchAll() as $row) {
-        $out[] = savedBook($pdo, (int)$row['id']);
-    }
-    respond($out);
+    respond(savedBooks($pdo, array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN))));
 }
 if ($method === 'DELETE') {
     $id = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -203,9 +199,11 @@ if (!is_string($status) || !in_array($status, ['want_to_read', 'reading', 'finis
     );
 }
 $details = is_array($payload['session'] ?? null) ? $payload['session'] : [];
-$existing = findSavedBookByHardcoverId($pdo, $id);
-if ($existing) {
-    $bookId = (int)$existing['id'];
+$existing = $pdo->prepare('SELECT id FROM books WHERE external_api_id=?');
+$existing->execute([(string)$id]);
+$bookId = $existing->fetchColumn();
+if ($bookId !== false) {
+    $bookId = (int)$bookId;
     $pdo->beginTransaction();
     try {
         $pdo

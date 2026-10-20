@@ -12,12 +12,13 @@ const emit = defineEmits(["open", "status-change", "add-to-list"]);
     <!-- Render cards in a responsive grid, or explain that the current filter is empty. -->
     <div v-if="books.length" class="row g-3 g-lg-4">
         <div
-            v-for="book in books"
-            :key="book.id"
+            v-for="(book, index) in books"
+            :key="book.hardcover_id"
             class="col-6 col-md-4 col-lg-3 col-xl-3"
         >
             <BookCard
                 :book="book"
+                :cover-loading="index < 4 ? 'eager' : 'lazy'"
                 @open="emit('open', $event)"
                 @status-change="emit('status-change', $event)"
                 @add-to-list="emit('add-to-list', $event)"

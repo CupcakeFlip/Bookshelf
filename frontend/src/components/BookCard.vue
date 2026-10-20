@@ -19,7 +19,10 @@ const isMenuOpen = ref(false);
  * @property {string|null} [status] Current locally persisted reading status.
  */
 /** @type {{book: BookCardData}} */
-const props = defineProps({ book: { type: Object, required: true } });
+const props = defineProps({
+    book: { type: Object, required: true },
+    coverLoading: { type: String, default: "lazy" },
+});
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["status-change", "add-to-list"]);
 
@@ -60,6 +63,8 @@ const text = computed(() => bookText(props.book));
                         v-if="cover_url"
                         :alt="'Cover for ' + book.title"
                         :src="cover_url"
+                        :loading="coverLoading"
+                        decoding="async"
                         class="book-cover"
                     />
                     <div
