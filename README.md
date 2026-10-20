@@ -76,10 +76,18 @@ loaded from `books.php` in newest `user_books.updated_at` order.
 
 Library and automatic list detail pages support debounced title/author search,
 multiple genre filters, and selectable sorting. The books API accepts optional
-`q`, `status`, `genres` (comma-separated genre IDs), and `sort` parameters.
+`q`, `status`, `genres` (comma-separated genre IDs), `categories`, and `sort` parameters.
 Supported sort values are `recently_updated_desc`, `recently_updated_asc`,
 `title_asc`, `title_desc`, `release_date_desc`, `release_date_asc`,
 `author_asc`, and `author_desc`.
+
+`GET /api/books.php` also accepts `page` (starting at 1) and `limit` (12, 24,
+48, or 96; default 24). It returns `{ "books": [...], "page": 1,
+"limit": 24, "total": 0, "totalPages": 0 }`. Pages past the end resolve to the
+last available page. `GET /api/books.php?summary=lists` returns the five lists'
+recent cover previews. `GET /api/popular-books.php?page=1&limit=24` returns
+`books`, `page`, `limit`, and `hasNext`; Hardcover does not provide a reliable
+total page count for trending books.
 
 Lister og deres bøger håndteres via:
 

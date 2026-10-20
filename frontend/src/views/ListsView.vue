@@ -10,27 +10,22 @@ const definitions = [
     { id: "paused", title: "Paused" },
     { id: "dnf", title: "Did Not Finish" },
 ];
-const books = ref([]),
+const previews = ref({}),
     loading = ref(true),
     error = ref("");
 const lists = computed(() =>
     definitions.map((d) => ({
         ...d,
-        recentBooks: books.value
-            .filter((b) => b.status === d.id)
-            .sort(
-                (a, b) =>
-                    new Date(b.updated_at || 0) - new Date(a.updated_at || 0),
-            ),
+        recentBooks: previews.value[d.id] ?? [],
     })),
 );
 
 async function fetchBooks() {
     try {
-        const r = await fetch("/api/books.php");
+        const r = await fetch("/api/books.php?summary=lists");
         const p = await r.json().catch(() => ({}));
         if (!r.ok) throw Error(p.error || "Could not load reading lists.");
-        books.value = Array.isArray(p) ? p : [];
+        previews.value = p.lists;
     } catch (e) {
         error.value = e.message;
     } finally {
