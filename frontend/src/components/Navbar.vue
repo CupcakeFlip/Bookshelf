@@ -1,11 +1,13 @@
 <script setup>
-import { nextTick, ref } from "vue";
+import { nextTick, onUnmounted, ref } from "vue";
 import { Toast } from "bootstrap";
+import ButtonSpinner from "@/components/ButtonSpinner.vue";
 
 const syncing = ref(false);
 const toastElement = ref(null);
 const toastMessage = ref("");
 const toastVariant = ref("success");
+let active = true;
 /** Navigation entries rendered in the primary menu. */
 const items = [
     { label: "Home", to: "/" },
@@ -30,6 +32,7 @@ const stop = (event) => event.preventDefault();
  * @returns {Promise<void>}
  */
 async function syncBooks() {
+    if (syncing.value) return;
     syncing.value = true;
 
     try {
@@ -80,14 +83,17 @@ async function syncBooks() {
 
 /** Shows one auto-dismissing Bootstrap toast without affecting navbar layout. */
 async function showToast(message, variant) {
+    if (!active) return;
     toastMessage.value = message;
     toastVariant.value = variant;
     await nextTick();
+    if (!active || !toastElement.value) return;
     Toast.getOrCreateInstance(toastElement.value, {
         autohide: true,
         delay: 5000,
     }).show();
 }
+onUnmounted(() => { active = false; });
 </script>
 
 <template>
@@ -129,17 +135,19 @@ async function showToast(message, variant) {
                     </li>
                     <li class="nav-item">
                         <button
-                            :aria-label="'Sync with Hardcover'"
+                            :aria-label="syncing ? 'Syncing with Hardcover' : 'Sync with Hardcover'"
+                            :aria-busy="syncing"
                             :disabled="syncing"
                             class="btn btn-sm nav-link sync-button"
                             title="Sync with Hardcover"
                             type="button"
                             @click="syncBooks"
                         >
+                            <ButtonSpinner v-if="syncing" no-margin />
                             <i
-                                :class="{ 'sync-icon--spinning': syncing }"
                                 aria-hidden="true"
                                 class="bi bi-arrow-clockwise sync-icon"
+                                v-if="!syncing"
                             />
                         </button>
                     </li>
@@ -202,19 +210,4 @@ async function showToast(message, variant) {
     aspect-ratio: 1;
 }
 
-.sync-icon--spinning {
-    animation: sync-rotate 0.9s linear infinite;
-}
-
-@keyframes sync-rotate {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .sync-icon--spinning {
-        animation: none;
-    }
-}
 </style>

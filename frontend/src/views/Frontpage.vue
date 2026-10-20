@@ -3,6 +3,8 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
 import Pagination from "@/components/Pagination.vue";
+import BookGridSkeleton from "@/components/BookGridSkeleton.vue";
+import LoadingIndicator from "@/components/LoadingIndicator.vue";
 import {searchHardcoverBooks, searchLocalBooks} from "@/api/books";
 import {filterBooksByGenre, getGenreOptions} from "@/utils/bookFormatting";
 
@@ -43,7 +45,7 @@ function updateBook({book}) {
 
 async function fetchPopularBooks(page = popularPage.value) {
     const requestNumber = ++searchNumber;
-    popularPage.value = page;
+    const previousPage = popularPage.value;
     showingPopular.value = true;
     loading.value = true;
     message.value = "";
@@ -58,7 +60,10 @@ async function fetchPopularBooks(page = popularPage.value) {
         books.value = popularBooks.value;
         message.value = "";
     } catch (error) {
-        if (requestNumber === searchNumber) message.value = error.message;
+        if (requestNumber === searchNumber) {
+            popularPage.value = previousPage;
+            message.value = error.message;
+        }
     } finally {
         if (requestNumber === searchNumber) loading.value = false;
     }
@@ -83,7 +88,8 @@ async function searchBooks() {
     const localBooks = local.status === "fulfilled" ? local.value : [];
     const hardcoverBooks =
         hardcover.status === "fulfilled" ? hardcover.value : [];
-    books.value = mergeBooks(localBooks, hardcoverBooks);
+    if (local.status === "fulfilled" || hardcover.status === "fulfilled")
+        books.value = mergeBooks(localBooks, hardcoverBooks);
     if (local.status === "rejected" && hardcover.status === "rejected")
         message.value = "Could not search the local library or Hardcover.";
     else if (local.status === "rejected")
@@ -113,9 +119,10 @@ onMounted(() => {
 const refreshPopularBooks = () => {
     if (showingPopular.value) fetchPopularBooks();
 };
-onUnmounted(() =>
-    window.removeEventListener("bookshelf:books-synced", refreshPopularBooks),
-);
+onUnmounted(() => {
+    ++searchNumber;
+    window.removeEventListener("bookshelf:books-synced", refreshPopularBooks);
+});
 
 const genreOptions = computed(() => getGenreOptions(books.value));
 const filteredBooks = computed(() =>
@@ -177,34 +184,33 @@ const filteredBooks = computed(() =>
                 </div>
             </form>
         </div>
-        <p
-            v-if="loading"
-            aria-live="polite"
-            class="py-3 text-body-secondary text-center"
-        >
-            Searching books...
-        </p>
-        <div v-else>
+        <LoadingIndicator v-if="loading && books.length" :label="showingPopular ? 'Loading popular books…' : 'Searching books…'" small class="mb-3" />
+        <div :aria-busy="loading" aria-label="Catalogue books">
             <p v-if="partialError" class="alert alert-warning" role="status">
                 {{ partialError }}
             </p>
             <p v-if="message" class="alert alert-danger" role="alert">
                 {{ message }}
             </p>
+            <template v-if="loading && !books.length">
+                <span class="visually-hidden" role="status">Loading catalogue books…</span>
+                <BookGridSkeleton :count="24" />
+            </template>
             <p
-                v-else-if="query.trim() && !filteredBooks.length"
+                v-else-if="!loading && !message && query.trim() && !filteredBooks.length"
                 class="py-5 text-body-secondary text-center"
             >
                 No books match your search.
             </p>
             <BookGrid
-                v-else
+                v-else-if="books.length || !message"
                 :books="filteredBooks"
                 @status-change="updateBook"
             />
-            <Pagination v-if="showingPopular && !message"
+            <Pagination v-if="showingPopular && (books.length || !loading)"
                 :has-next="popularHasNext"
                 :page="popularPage"
+                :disabled="loading"
                 @page-change="fetchPopularBooks"/>
         </div>
     </main>

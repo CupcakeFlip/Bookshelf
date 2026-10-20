@@ -1,15 +1,17 @@
 <script setup>
 import {onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
-import BookGrid from "@/components/BookGrid.vue";
+import BookCollectionContent from "@/components/BookCollectionContent.vue";
 import BookCollectionFilters from "@/components/BookCollectionFilters.vue";
 import Pagination from "@/components/Pagination.vue";
 import {getSavedPageLimit, savePageLimit} from "@/utils/pagination";
+import {createLatestRequest} from "@/utils/latestRequest";
 
 const books = ref([]),
     loading = ref(true),
     error = ref(""),
     page = ref(1),
+    loadedPage = ref(1),
     limit = ref(getSavedPageLimit()), totalPages = ref(0),
     filters = ref({
         q: "",
@@ -17,12 +19,10 @@ const books = ref([]),
         categories: [],
         sort: "recently_updated_desc",
     });
-let controller = null;
+const requests = createLatestRequest();
 
 async function fetchBooks() {
-    controller?.abort();
-    const request = new AbortController();
-    controller = request;
+    const request = requests.start();
     loading.value = true;
     error.value = "";
     try {
@@ -35,15 +35,19 @@ async function fetchBooks() {
                 signal: request.signal,
             }),
             d = await r.json().catch(() => ({}));
-        if (controller !== request || request.signal.aborted) return;
+        if (!requests.isCurrent(request)) return;
         if (!r.ok) throw Error(d.error || "Could not load the library.");
         books.value = d.books;
         page.value = d.page;
+        loadedPage.value = d.page;
         totalPages.value = d.totalPages;
     } catch (e) {
-        if (controller === request && e.name !== "AbortError") error.value = e.message;
+        if (requests.isCurrent(request) && e.name !== "AbortError") {
+            error.value = e.message;
+            page.value = loadedPage.value;
+        }
     } finally {
-        if (controller === request) loading.value = false;
+        if (requests.isCurrent(request)) loading.value = false;
     }
 }
 
@@ -80,7 +84,7 @@ onMounted(() => {
     window.addEventListener("bookshelf:books-synced", refreshBooks);
 });
 onUnmounted(() => {
-    controller?.abort();
+    requests.abort();
     window.removeEventListener("bookshelf:books-synced", refreshBooks);
 });
 </script>
@@ -92,15 +96,15 @@ onUnmounted(() => {
         <Pagination :limit="limit"
             :page="page"
             :total-pages="totalPages"
+            :disabled="loading"
             show-page-size
             @page-change="changePage"
             @limit-change="changeLimit"/>
-        <p v-if="loading">Loading books...</p>
-        <p v-else-if="error" class="alert alert-danger">{{ error }}</p>
-        <BookGrid v-else :books="books" @status-change="updateBook"/>
-        <Pagination v-if="!loading && !error && totalPages > 1"
+        <BookCollectionContent :books="books" :loading="loading" :error="error" :skeleton-count="limit" label="Library books" @status-change="updateBook" />
+        <Pagination v-if="totalPages > 1 && books.length"
             :page="page"
             :total-pages="totalPages"
+            :disabled="loading"
             @page-change="changePage"/>
     </main>
 </template>
