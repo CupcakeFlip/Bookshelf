@@ -9,7 +9,7 @@ declare(strict_types=1);
  * locally persisted reading statuses, and returns the result in trend order.
  */
 const HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
-const BOOK_LIMIT = 20;
+const BOOK_LIMIT = 24;
 
 /**
  * Sends a JSON response and stops execution.
@@ -194,6 +194,11 @@ function enrichStatuses(PDO $pdo, array $books): array
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     respond(['error' => 'Method not allowed.'], 405);
 }
+$page = filter_var($_GET['page'] ?? '1', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+$limit = filter_var($_GET['limit'] ?? (string)BOOK_LIMIT, FILTER_VALIDATE_INT);
+if ($page === false || $limit !== BOOK_LIMIT || $page > intdiv(2147483647, BOOK_LIMIT)) {
+    respond(['error' => 'page or limit is invalid.'], 422);
+}
 
 // Read the Hardcover token from Docker environment variables.
 $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
@@ -207,18 +212,19 @@ $pdo = require __DIR__ . '/../settings/init.php';
 $to = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $from = $to->modify('-30 days');
 
-// Step 1: Get the IDs of the 20 trending books.
+// Request one extra ID to determine whether another page exists.
 $trendingQuery = <<<'GRAPHQL'
 query TrendingBooks(
     $from: date!
     $to: date!
     $limit: Int!
+    $offset: Int!
 ) {
     books_trending(
         from: $from
         to: $to
         limit: $limit
-        offset: 0
+        offset: $offset
     ) {
         ids
     }
@@ -230,7 +236,8 @@ $trendingData = hardcoverRequest(
     [
         'from' => $from->format('Y-m-d'),
         'to' => $to->format('Y-m-d'),
-        'limit' => BOOK_LIMIT,
+        'limit' => BOOK_LIMIT + 1,
+        'offset' => ($page - 1) * BOOK_LIMIT,
     ],
     $token
 );
@@ -238,7 +245,7 @@ $trendingData = hardcoverRequest(
 $ids = $trendingData['books_trending']['ids'] ?? [];
 
 if (!is_array($ids) || $ids === []) {
-    respond([]);
+    respond(['books' => [], 'page' => $page, 'limit' => BOOK_LIMIT, 'hasNext' => false]);
 }
 
 // Validate and limit the returned IDs.
@@ -252,12 +259,14 @@ $ids = array_slice(
         )
     ),
     0,
-    BOOK_LIMIT
+    BOOK_LIMIT + 1
 );
 
 if ($ids === []) {
-    respond([]);
+    respond(['books' => [], 'page' => $page, 'limit' => BOOK_LIMIT, 'hasNext' => false]);
 }
+$hasNext = count($ids) > BOOK_LIMIT;
+$ids = array_slice($ids, 0, BOOK_LIMIT);
 
 // Step 2: Fetch details for all 20 books in one request.
 $booksQuery = <<<'GRAPHQL'
@@ -311,4 +320,4 @@ foreach ($ids as $id) {
     }
 }
 
-respond(enrichStatuses($pdo, $popularBooks));
+respond(['books' => enrichStatuses($pdo, $popularBooks), 'page' => $page, 'limit' => BOOK_LIMIT, 'hasNext' => $hasNext]);

@@ -5,15 +5,20 @@ const formatValues = ["physical", "ebook", "audiobook"];
 // owned-format controls; rejecting them here avoids avoidable network calls.
 /** Searches locally saved books by title or author. */
 export async function searchLocalBooks(query = "") {
-    const params = new URLSearchParams();
-    if (query.trim()) params.set("q", query.trim());
-    const response = await fetch(
-        `/api/books.php${params.size ? `?${params}` : ""}`,
-    );
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok)
-        throw new Error(payload.error || "Could not search the local library.");
-    return Array.isArray(payload) ? payload : [];
+    const books = [];
+    let page = 1;
+    let totalPages;
+    do {
+        const params = new URLSearchParams({ q: query.trim(), page: String(page), limit: "96" });
+        const response = await fetch(`/api/books.php?${params}`);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok)
+            throw new Error(payload.error || "Could not search the local library.");
+        books.push(...payload.books);
+        totalPages = payload.totalPages;
+        page++;
+    } while (page <= totalPages);
+    return books;
 }
 
 /** Searches Hardcover through the server-side normalized search endpoint. */

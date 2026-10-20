@@ -3,9 +3,22 @@ import {
     createReadingSession,
     saveBookStatus,
     updateReadingSession,
+    searchLocalBooks,
 } from "./books";
 
 afterEach(() => vi.restoreAllMocks());
+
+describe("local search pagination", () => {
+    it("reads every matching page for combined Catalogue search", async () => {
+        vi.stubGlobal("fetch", vi.fn(async (url) => ({
+            ok: true,
+            json: async () => ({ books: [{ id: new URL(url, "http://localhost").searchParams.get("page") }], totalPages: 2 }),
+        })));
+        expect(await searchLocalBooks("stars")).toEqual([{ id: "1" }, { id: "2" }]);
+        expect(fetch.mock.calls[0][0]).toContain("limit=96");
+        expect(fetch.mock.calls[1][0]).toContain("page=2");
+    });
+});
 
 describe("reading session payloads", () => {
     it("does not send date form UI fields when dates are empty", async () => {

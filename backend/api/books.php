@@ -64,6 +64,19 @@ const BOOK_GENRE_CATEGORIES = [
 $pdo = require __DIR__ . '/../settings/init.php';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
+    if (($_GET['summary'] ?? '') === 'lists') {
+        $rows = $pdo->query('SELECT status, id, title, cover_url FROM (SELECT ub.status, b.id, b.title, b.cover_url, ROW_NUMBER() OVER (PARTITION BY ub.status ORDER BY ub.updated_at DESC, b.id) AS position FROM user_books ub JOIN books b ON b.id=ub.book_id) previews WHERE position <= 8 ORDER BY status, position')->fetchAll(PDO::FETCH_ASSOC);
+        $lists = array_fill_keys(['want_to_read', 'reading', 'finished', 'paused', 'dnf'], []);
+        foreach ($rows as $row) {
+            $lists[$row['status']][] = ['id' => (int)$row['id'], 'title' => $row['title'], 'cover_url' => $row['cover_url']];
+        }
+        respond(['lists' => $lists]);
+    }
+    $page = filter_var($_GET['page'] ?? '1', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $limit = filter_var($_GET['limit'] ?? '24', FILTER_VALIDATE_INT);
+    if ($page === false || !in_array($limit, [12, 24, 48, 96], true)) {
+        respond(['error' => 'page or limit is invalid.'], 422);
+    }
     $q = trim((string)($_GET['q'] ?? ''));
     $status = trim((string)($_GET['status'] ?? ''));
     $allowed = ['want_to_read', 'reading', 'finished', 'paused', 'dnf'];
@@ -76,8 +89,8 @@ if ($method === 'GET') {
             'title_desc' => 'b.title IS NULL, b.title DESC, b.id',
             'release_date_desc' => 'b.release_date IS NULL, b.release_date DESC, b.id',
             'release_date_asc' => 'b.release_date IS NULL, b.release_date ASC, b.id',
-            'author_asc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id) ASC, b.id',
-            'author_desc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id) DESC, b.id'
+            'author_asc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) ASC, b.id',
+            'author_desc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) DESC, b.id'
         ];
     if ($status !== '' && !in_array($status, $allowed, true)) {
         respond(['error' => 'status is invalid.'], 422);
@@ -149,10 +162,21 @@ if ($method === 'GET') {
     if ($conditions) {
         $sql .= ' WHERE ' . implode(' AND ', $conditions);
     }
-    $sql .= ' ORDER BY ' . $sorts[$sort];
+    $countSql = preg_replace('/^SELECT b.id/', 'SELECT COUNT(*)', $sql, 1);
+    $count = $pdo->prepare($countSql);
+    $count->execute($params);
+    $total = (int)$count->fetchColumn();
+    $totalPages = (int)ceil($total / $limit);
+    $page = min($page, max(1, $totalPages));
+    $sql .= ' ORDER BY ' . $sorts[$sort] . ' LIMIT ? OFFSET ?';
     $s = $pdo->prepare($sql);
-    $s->execute($params);
-    respond(savedBooks($pdo, array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN))));
+    foreach ($params as $index => $value) {
+        $s->bindValue($index + 1, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $s->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+    $s->bindValue(count($params) + 2, ($page - 1) * $limit, PDO::PARAM_INT);
+    $s->execute();
+    respond(['books' => savedBooks($pdo, array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN))), 'page' => $page, 'limit' => $limit, 'total' => $total, 'totalPages' => $totalPages]);
 }
 if ($method === 'DELETE') {
     $id = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);

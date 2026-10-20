@@ -1,9 +1,10 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
-import { searchHardcoverBooks, searchLocalBooks } from "@/api/books";
-import { filterBooksByGenre, getGenreOptions } from "@/utils/bookFormatting";
+import Pagination from "@/components/Pagination.vue";
+import {searchHardcoverBooks, searchLocalBooks} from "@/api/books";
+import {filterBooksByGenre, getGenreOptions} from "@/utils/bookFormatting";
 
 const query = ref("");
 const genre = ref("");
@@ -12,6 +13,9 @@ const popularBooks = ref([]);
 const loading = ref(false);
 const message = ref("");
 const partialError = ref("");
+const popularPage = ref(1);
+const popularHasNext = ref(false);
+const showingPopular = ref(true);
 // Incremented for each submitted search so a slower earlier response cannot
 // overwrite results from the query currently shown in the input.
 let searchNumber = 0;
@@ -29,7 +33,7 @@ function mergeBooks(localBooks, hardcoverBooks) {
 }
 
 /** Updates the visible book after BookCard persists a status change. */
-function updateBook({ book }) {
+function updateBook({book}) {
     const id = String(book.hardcover_id);
     const replace = (list) =>
         list.map((item) => (String(item.hardcover_id) === id ? book : item));
@@ -37,15 +41,26 @@ function updateBook({ book }) {
     popularBooks.value = replace(popularBooks.value);
 }
 
-async function fetchPopularBooks() {
+async function fetchPopularBooks(page = popularPage.value) {
+    const requestNumber = ++searchNumber;
+    popularPage.value = page;
+    showingPopular.value = true;
+    loading.value = true;
+    message.value = "";
     try {
-        const response = await fetch("/api/popular-books.php");
+        const response = await fetch(`/api/popular-books.php?page=${page}&limit=24`);
         if (!response.ok) throw new Error("Could not load popular books.");
-        popularBooks.value = await response.json();
+        const payload = await response.json();
+        if (requestNumber !== searchNumber) return;
+        popularBooks.value = payload.books;
+        popularPage.value = payload.page;
+        popularHasNext.value = payload.hasNext;
         books.value = popularBooks.value;
         message.value = "";
     } catch (error) {
-        message.value = error.message;
+        if (requestNumber === searchNumber) message.value = error.message;
+    } finally {
+        if (requestNumber === searchNumber) loading.value = false;
     }
 }
 
@@ -54,6 +69,7 @@ async function searchBooks() {
     const term = query.value.trim();
     if (!term) return restorePopularBooks();
     const requestNumber = ++searchNumber;
+    showingPopular.value = false;
     loading.value = true;
     message.value = "";
     partialError.value = "";
@@ -79,11 +95,11 @@ async function searchBooks() {
 
 function restorePopularBooks() {
     ++searchNumber;
-    loading.value = false;
     query.value = "";
-    books.value = popularBooks.value;
     message.value = "";
     partialError.value = "";
+    popularPage.value = 1;
+    fetchPopularBooks(1);
 }
 
 function handleInput() {
@@ -92,10 +108,13 @@ function handleInput() {
 
 onMounted(() => {
     fetchPopularBooks();
-    window.addEventListener("bookshelf:books-synced", fetchPopularBooks);
+    window.addEventListener("bookshelf:books-synced", refreshPopularBooks);
 });
+const refreshPopularBooks = () => {
+    if (showingPopular.value) fetchPopularBooks();
+};
 onUnmounted(() =>
-    window.removeEventListener("bookshelf:books-synced", fetchPopularBooks),
+    window.removeEventListener("bookshelf:books-synced", refreshPopularBooks),
 );
 
 const genreOptions = computed(() => getGenreOptions(books.value));
@@ -105,14 +124,14 @@ const filteredBooks = computed(() =>
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
     <main class="container py-4">
         <div class="mb-4">
             <h1 class="mb-3">Catalogue</h1>
             <form class="row g-3" @submit.prevent="searchBooks">
                 <div class="col-md-8">
                     <label class="visually-hidden" for="catalogue-search"
-                        >Search books</label
+                    >Search books</label
                     >
                     <input
                         id="catalogue-search"
@@ -125,7 +144,7 @@ const filteredBooks = computed(() =>
                 </div>
                 <div class="col-md-4">
                     <label class="visually-hidden" for="genre-filter"
-                        >Filter by genre</label
+                    >Filter by genre</label
                     >
                     <select
                         id="genre-filter"
@@ -183,6 +202,10 @@ const filteredBooks = computed(() =>
                 :books="filteredBooks"
                 @status-change="updateBook"
             />
+            <Pagination v-if="showingPopular && !message"
+                :has-next="popularHasNext"
+                :page="popularPage"
+                @page-change="fetchPopularBooks"/>
         </div>
     </main>
 </template>
