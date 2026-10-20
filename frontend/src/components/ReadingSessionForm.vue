@@ -3,6 +3,7 @@ import { computed, reactive, watch } from "vue";
 
 const props = defineProps({
     modelValue: { type: Object, default: null },
+    saving: { type: Boolean, default: false },
     defaultFinishDate: { type: String, default: "" },
     defaultStartDate: { type: String, default: "" },
 });
@@ -173,7 +174,7 @@ function clearProgress() {
 }
 
 function save() {
-    if (error.value) return;
+    if (error.value || props.saving) return;
     const start = dateData("start"),
         finish = dateData("finish");
     const progress =
@@ -334,11 +335,15 @@ function clearDay(prefix) {
             <button
                 class="btn btn-outline-secondary"
                 type="button"
+                :disabled="saving"
                 @click="emit('cancel')"
             >
                 Cancel
             </button>
-            <button class="btn btn-primary" type="submit">Save</button>
+            <button class="btn btn-primary" type="submit" :disabled="saving" :aria-busy="saving">
+                <span v-if="saving" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                {{ saving ? "Saving…" : "Save" }}
+            </button>
         </div>
     </form>
 </template>

@@ -28,4 +28,10 @@ describe("Pagination", () => {
         expect(html).not.toContain('aria-label="Page 3"');
         expect(html).not.toMatch(/disabled[^>]*>Next/);
     });
+
+    it("disables navigation and page size during a page request", async () => {
+        const html = await render({ page: 2, totalPages: 4, showPageSize: true, disabled: true });
+        expect(html).toMatch(/<select[^>]*disabled/);
+        expect(html.match(/<button[^>]*disabled/g)).toHaveLength(6);
+    });
 });

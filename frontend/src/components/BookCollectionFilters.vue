@@ -1,12 +1,9 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import {
-    getGenreFilterCategories,
-    normalizeGenre,
-    STANDARD_GENRES,
-} from "@/utils/bookFormatting";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {getGenreFilterCategories, normalizeGenre, STANDARD_GENRES,} from "@/utils/bookFormatting";
+import {createLatestRequest} from "@/utils/latestRequest";
 
-const props = defineProps({ status: { type: String, default: "" } });
+const props = defineProps({status: {type: String, default: ""}});
 const emit = defineEmits(["change"]);
 const query = ref(""),
     selectedGenres = ref([]),
@@ -15,7 +12,9 @@ const query = ref(""),
     ascending = ref(false),
     advanced = ref(false),
     genres = ref([]),
-    genreError = ref("");
+    genreError = ref(""),
+    genresLoading = ref(false);
+const genreRequests = createLatestRequest();
 let timer = null;
 const sortLabels = {
     recently_updated: "Recently updated",
@@ -152,18 +151,23 @@ function reset() {
 }
 
 async function loadGenres() {
+    const request = genreRequests.start();
+    genresLoading.value = true;
     genreError.value = "";
     try {
         const suffix = props.status
             ? `?status=${encodeURIComponent(props.status)}`
             : "";
-        const response = await fetch(`/api/genres.php${suffix}`);
+        const response = await fetch(`/api/genres.php${suffix}`, {signal: request.signal});
         const payload = await response.json().catch(() => ({}));
+        if (!genreRequests.isCurrent(request)) return;
         if (!response.ok)
             throw Error(payload.error || "Could not load genres.");
         genres.value = Array.isArray(payload) ? payload : [];
     } catch (error) {
-        genreError.value = error.message;
+        if (genreRequests.isCurrent(request) && error.name !== "AbortError") genreError.value = error.message;
+    } finally {
+        if (genreRequests.isCurrent(request)) genresLoading.value = false;
     }
 }
 
@@ -175,7 +179,10 @@ watch(
     },
 );
 onMounted(loadGenres);
-onUnmounted(() => clearTimeout(timer));
+onUnmounted(() => {
+    clearTimeout(timer);
+    genreRequests.abort();
+});
 </script>
 <template>
     <section aria-label="Book collection filters" class="mb-4 book-filters">
@@ -196,22 +203,25 @@ onUnmounted(() => clearTimeout(timer));
             <div>
                 <label class="form-label" for="book-genre">Genre</label
                 ><select
-                    id="book-genre"
-                    v-model="selectedStandardGenre"
-                    class="form-select"
-                    @change="selectGenre"
-                >
-                    <option value="">All genres</option>
+                id="book-genre"
+                v-model="selectedStandardGenre"
+                :disabled="genresLoading"
+                class="form-select"
+                @change="selectGenre"
+            >
+                <option value="">All genres</option>
 
-                    <option
-                        v-for="genre in standardGenres"
-                        :key="genre.name"
-                        :disabled="genre.matches.length === 0"
-                        :value="genre.name"
-                    >
-                        {{ genre.name }}
-                    </option>
-                </select>
+                <option
+                    v-for="genre in standardGenres"
+                    :key="genre.name"
+                    :disabled="genre.matches.length === 0"
+                    :value="genre.name"
+                >
+                    {{ genre.name }}
+                </option>
+            </select>
+
+                <p v-if="genreError" class="text-danger small mt-1 mb-0" role="alert">{{ genreError }}</p>
             </div>
             <div class="book-filters__sort">
                 <label class="form-label" for="book-sort">Sort by</label>
@@ -260,11 +270,11 @@ onUnmounted(() => clearTimeout(timer));
                 >
                     <i aria-hidden="true" class="bi bi-sliders2"></i> Advanced
                     Filtering<span
-                        v-if="activeAdvanced"
-                        aria-label="Advanced filters active"
-                        class="ms-1"
-                        >•</span
-                    >
+                    v-if="activeAdvanced"
+                    aria-label="Advanced filters active"
+                    class="ms-1"
+                >•</span
+                >
                 </button>
                 <button
                     class="btn btn-secondary btn-sm"
@@ -301,9 +311,6 @@ onUnmounted(() => clearTimeout(timer));
         <div v-if="advanced" class="mt-3 book-filters__advanced">
             <fieldset>
                 <legend class="form-label fs-6">Additional genres</legend>
-                <p v-if="genreError" class="text-danger small">
-                    {{ genreError }}
-                </p>
                 <div
                     v-if="filterCategories.length"
                     class="d-flex flex-wrap gap-2"
@@ -326,7 +333,7 @@ onUnmounted(() => clearTimeout(timer));
                     </label>
                 </div>
                 <span v-else class="text-body-secondary small"
-                    >No genres available.</span
+                >No genres available.</span
                 >
             </fieldset>
         </div>

@@ -2,14 +2,17 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { removeBookStatus, saveBookStatus } from "@/api/books";
 import ReadingStatusDialog from "@/components/ReadingStatusDialog.vue";
+import ButtonSpinner from "@/components/ButtonSpinner.vue";
 
 const dropdownElement = ref(null);
 const pending = ref(false);
+const saving = ref(false);
 const isMenuOpen = ref(false);
 const errorMessage = ref("");
 const finishedDialogOpen = ref(false);
 const finishedDetails = ref(null);
 const dialogStatus = ref("finished");
+let active = true;
 
 const statusOptions = [
     { value: null, label: "Not in library" },
@@ -104,11 +107,13 @@ async function selectStatus(status) {
             details = await props.beforeStatusChange(status, previous);
             if (details === null) return;
         }
+        if (!active) return;
+        saving.value = true;
         const saved =
             status === null
                 ? await removeBookStatus(props.book)
                 : await saveBookStatus(props.book, status, details);
-        emit("status-change", {
+        if (active) emit("status-change", {
             book: { ...props.book, ...saved, status },
             status,
             previous,
@@ -116,6 +121,7 @@ async function selectStatus(status) {
     } catch (error) {
         errorMessage.value = error.message;
     } finally {
+        saving.value = false;
         pending.value = false;
     }
 }
@@ -157,6 +163,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    active = false;
+    finishedDetails.value?.(null);
+    finishedDetails.value = null;
     document.removeEventListener("pointerdown", handleOutsideClick);
     document.removeEventListener("keydown", handleEscape);
 });
@@ -172,10 +181,12 @@ watch(isMenuOpen, (isOpen) => {
             <button
                 :class="statusButtonClass"
                 :disabled="pending"
+                :aria-busy="saving"
                 class="btn btn-sm"
                 type="button"
                 @click="mainStatusAction"
             >
+                <ButtonSpinner v-if="saving" />
                 {{ statusLabel }}
             </button>
             <button
