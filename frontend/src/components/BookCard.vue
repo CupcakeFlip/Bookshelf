@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { formatAuthors } from "@/utils/bookFormatting";
+import {bookText} from "@/utils/bookText";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 
 const isFlipped = ref(false);
@@ -42,7 +43,7 @@ const seriesText = computed(() =>
     : "",
 );
 
-const description = computed(() => props.book.description ?? "");
+const text = computed(() => bookText(props.book));
 </script>
 
 <template>
@@ -107,9 +108,10 @@ const description = computed(() => props.book.description ?? "");
 
           <hr />
 
-          <p v-if="description" class="mb-2 book-meta book-description">
-            {{ description }}
-          </p>
+          <div v-if="text.headline || text.description" class="mb-2 book-meta book-description">
+            <p v-if="text.headline" class="mb-2 book-headline">{{ text.headline }}</p>
+            <p v-if="text.description" class="mb-0">{{ text.description }}</p>
+          </div>
           <RouterLink
             :to="{
               name: 'book-details',
@@ -268,6 +270,11 @@ h3 {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 12;
   line-clamp: 12;
+  white-space: pre-line;
+}
+
+.book-headline {
+  font-weight: 600;
 }
 
 .book-authors {

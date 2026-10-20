@@ -35,7 +35,7 @@ function booksNormalizeHardcover(array $raw): array
     }
     return [
         'hardcover_id' => (string)$raw['id'], 'title' => (string)($raw['title'] ?? ''),
-        'description' => $raw['description'] ?? null,
+        'headline' => $raw['headline'] ?? null, 'description' => $raw['description'] ?? null,
         'cover_url' => booksFirstValue([$raw['cover_url'] ?? null, $raw['image_url'] ?? null, $raw['image']['url'] ?? null, $raw['cached_image']['url'] ?? null]),
         'release_date' => $raw['release_date'] ?? null, 'authors' => array_values($authors),
         'series' => $series, 'genres' => array_values($genres),
@@ -46,7 +46,7 @@ function fetchHardcoverBook(int $bookId, string $token): array
 {
     $query = <<<'GRAPHQL'
 query BookDetail($id: Int!) {
-  books_by_pk(id: $id) { id title description release_date cached_tags }
+  books_by_pk(id: $id) { id title headline description release_date cached_tags }
 }
 GRAPHQL;
     $curl = curl_init(BOOKS_HARDCOVER_API_URL);
@@ -74,7 +74,7 @@ GRAPHQL;
 
 function normalizeSavedBook(array $book): array
 {
-    return ['id' => (int)$book['id'], 'hardcover_id' => (string)$book['external_api_id'], 'title' => $book['title'], 'description' => $book['description'], 'cover_url' => $book['cover_url'], 'release_date' => $book['release_date'], 'authors' => $book['authors'] ?? [], 'series' => $book['series_local_id'] ? ['id' => (int)$book['series_local_id'], 'hardcover_id' => (string)$book['series_external_api_id'], 'name' => $book['series_name'], 'position' => $book['series_position']] : null, 'genres' => $book['genres'] ?? [], 'lists' => $book['lists'] ?? [], 'tags' => $book['tags'] ?? [], 'status' => $book['status'] ?? null, 'updated_at' => $book['status_updated_at'] ?? null];
+    return ['id' => (int)$book['id'], 'hardcover_id' => (string)$book['external_api_id'], 'title' => $book['title'], 'headline' => $book['headline'] ?? null, 'description' => $book['description'], 'cover_url' => $book['cover_url'], 'release_date' => $book['release_date'], 'authors' => $book['authors'] ?? [], 'series' => $book['series_local_id'] ? ['id' => (int)$book['series_local_id'], 'hardcover_id' => (string)$book['series_external_api_id'], 'name' => $book['series_name'], 'position' => $book['series_position']] : null, 'genres' => $book['genres'] ?? [], 'lists' => $book['lists'] ?? [], 'tags' => $book['tags'] ?? [], 'status' => $book['status'] ?? null, 'updated_at' => $book['status_updated_at'] ?? null];
 }
 
 function savedBook(PDO $pdo, int $bookId): array
@@ -98,7 +98,7 @@ function findSavedBookByHardcoverId(PDO $pdo, int $hardcoverId): ?array
 
 function externalBookResponse(array $book): array
 {
-    return ['id'=>null, 'hardcover_id'=>$book['hardcover_id'], 'title'=>$book['title'], 'description'=>$book['description'], 'cover_url'=>$book['cover_url'], 'release_date'=>$book['release_date'], 'authors'=>$book['authors'], 'series'=>$book['series'], 'genres'=>$book['genres'], 'lists'=>[], 'tags'=>[], 'status'=>null];
+    return ['id'=>null, 'hardcover_id'=>$book['hardcover_id'], 'title'=>$book['title'], 'headline'=>$book['headline'] ?? null, 'description'=>$book['description'], 'cover_url'=>$book['cover_url'], 'release_date'=>$book['release_date'], 'authors'=>$book['authors'], 'series'=>$book['series'], 'genres'=>$book['genres'], 'lists'=>[], 'tags'=>[], 'status'=>null];
 }
 
 function saveBook(PDO $pdo, array $book, string $status = 'want_to_read', array $sessionDetails = []): array
@@ -108,7 +108,7 @@ function saveBook(PDO $pdo, array $book, string $status = 'want_to_read', array 
         $seriesId=null;
         if ($book['series']) { $s=$pdo->prepare('SELECT id FROM series WHERE external_api_id=?'); $s->execute([$book['series']['id']]); $seriesId=$s->fetchColumn(); if (!$seriesId) { $s=$pdo->prepare('INSERT INTO series (external_api_id,name) VALUES (?,?)'); $s->execute([$book['series']['id'],$book['series']['name']]); $seriesId=(int)$pdo->lastInsertId(); } }
         $s=$pdo->prepare('SELECT id FROM books WHERE external_api_id=?'); $s->execute([$book['hardcover_id']]); $bookId=$s->fetchColumn();
-        if (!$bookId) { $s=$pdo->prepare('INSERT INTO books (external_api_id,title,description,cover_url,release_date,series_id,series_position) VALUES (?,?,?,?,?,?,?)'); $s->execute([$book['hardcover_id'],$book['title'],$book['description'],$book['cover_url'],$book['release_date'],$seriesId,$book['series']['position']??null]); $bookId=(int)$pdo->lastInsertId(); }
+        if (!$bookId) { $s=$pdo->prepare('INSERT INTO books (external_api_id,title,headline,description,cover_url,release_date,series_id,series_position) VALUES (?,?,?,?,?,?,?,?)'); $s->execute([$book['hardcover_id'],$book['title'],$book['headline']??null,$book['description'],$book['cover_url'],$book['release_date'],$seriesId,$book['series']['position']??null]); $bookId=(int)$pdo->lastInsertId(); }
         foreach ($book['authors'] as $author) { $s=$pdo->prepare('SELECT id FROM authors WHERE external_api_id=?'); $s->execute([$author['id']]); $id=$s->fetchColumn(); if (!$id) { $s=$pdo->prepare('INSERT INTO authors (external_api_id,name) VALUES (?,?)'); $s->execute([$author['id'],$author['name']]); $id=$pdo->lastInsertId(); } $pdo->prepare('INSERT IGNORE INTO book_authors VALUES (?,?)')->execute([$bookId,$id]); }
         foreach ($book['genres'] as $genre) { $s=$pdo->prepare('SELECT id FROM genres WHERE slug=?'); $s->execute([$genre['slug']]); $id=$s->fetchColumn(); if (!$id) { $s=$pdo->prepare('INSERT INTO genres (name,slug) VALUES (?,?)'); $s->execute([$genre['name'],$genre['slug']]); $id=$pdo->lastInsertId(); } $pdo->prepare('INSERT IGNORE INTO book_genres VALUES (?,?)')->execute([$bookId,$id]); }
         $pdo->prepare('INSERT INTO user_books (book_id,status) VALUES (?,?) ON DUPLICATE KEY UPDATE status=VALUES(status)')->execute([$bookId,$status]); transitionSession($pdo,(int)$bookId,$status,$sessionDetails); $pdo->commit(); return savedBook($pdo,(int)$bookId);

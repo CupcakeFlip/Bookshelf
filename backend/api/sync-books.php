@@ -72,6 +72,7 @@ function normalizeBook(array $book): array
     return [
         'hardcover_id' => (string)$book['id'],
         'title' => firstValue([$book['title'] ?? null]),
+        'headline' => array_key_exists('headline', $book) ? $book['headline'] : null,
         'description' => $book['description'] ?? null,
         'cover_url' => firstValue([$book['cached_image'] ?? null]),
         'release_date' => $book['release_date'] ?? null,
@@ -200,11 +201,14 @@ function updateBook(PDO $pdo, array $book): bool
     $localGenres = comparableGenres($stmt->fetchAll());
     $remoteAuthors = comparableAuthors($book['authors']);
     $remoteGenres = comparableGenres($book['genres']);
+    $localHeadline = comparableValue($local['headline']);
     $localDescription = comparableValue($local['description']);
     $localCover = comparableValue($local['cover_url']);
     $localReleaseDate = comparableValue($local['release_date']);
     $scalarChanges =
         (comparableValue($book['title']) !== null && comparableValue($book['title']) !== comparableValue($local['title'])
+        ) ||
+        (comparableValue($book['headline'] ?? null) !== null && comparableValue($book['headline'] ?? null) !== $localHeadline
         ) ||
         (comparableValue($book['description']) !== null && comparableValue($book['description']) !== $localDescription
         ) ||
@@ -254,12 +258,14 @@ function updateBook(PDO $pdo, array $book): bool
         }
         $fields = [
             'title = COALESCE(NULLIF(?, \'\'), title)',
+            'headline = COALESCE(NULLIF(?, \'\'), headline)',
             'description = COALESCE(NULLIF(?, \'\'), description)',
             'cover_url = COALESCE(NULLIF(?, \'\'), cover_url)',
             'release_date = COALESCE(NULLIF(?, \'\'), release_date)'
         ];
         $params = [
             $book['title'],
+            $book['headline'],
             $book['description'],
             $book['cover_url'],
             $book['release_date']
@@ -348,9 +354,21 @@ $rows =
             "SELECT id, external_api_id FROM books WHERE external_api_id IS NOT NULL AND external_api_id <> '' ORDER BY id"
         )
         ->fetchAll();
-$result = ['total' => count($rows), 'updated' => 0, 'unchanged' => 0, 'failed' => 0, 'errors' => []];
+$result = [
+    'total' => count($rows),
+    'selected' => count($rows),
+    'processed' => 0,
+    'updated' => 0,
+    'unchanged' => 0,
+    'failed' => 0,
+    'errors' => [],
+];
+if ($rows === []) {
+    $result['message'] = 'No eligible books were selected for synchronization.';
+    respond($result);
+}
 $query = <<<'GRAPHQL'
-query SyncBooks($ids: [Int!]!) { books(where: {id: {_in: $ids}}) { id title description release_date cached_image(path: "url") cached_tags contributions { author { id name } } book_series { position series { id name } } } }
+query SyncBooks($ids: [Int!]!) { books(where: {id: {_in: $ids}}) { id title headline description release_date cached_image(path: "url") cached_tags contributions { author { id name } } book_series { position series { id name } } } }
 GRAPHQL;
 foreach (array_chunk($rows, SYNC_BATCH_SIZE) as $batch) {
     try {
@@ -361,12 +379,14 @@ foreach (array_chunk($rows, SYNC_BATCH_SIZE) as $batch) {
                     static fn(int $id): bool => $id > 0
                 )
             );
+        if ($ids === []) throw new RuntimeException('No valid Hardcover IDs in batch.');
         $data = hardcoverRequest($query, ['ids' => $ids], $token);
         $byId = [];
         foreach ($data['books'] ?? [] as $raw)
             if (is_array($raw) && isset($raw['id'])) $byId[(string)$raw['id']] = normalizeBook($raw);
         foreach ($batch as $row) {
             try {
+                $result['processed']++;
                 if (!isset($byId[(string)$row['external_api_id']])) throw new RuntimeException(
                     'Hardcover book was not found.'
                 );

@@ -64,7 +64,7 @@ if ($method === 'GET') {
     // the response uses one consistent representation for every endpoint.
     $stmt =
         $pdo->prepare(
-            'SELECT id FROM reading_sessions WHERE book_id = ? ORDER BY COALESCE(start_date, finish_date, created_at), id'
+            'SELECT id FROM reading_sessions WHERE book_id = ? ORDER BY COALESCE(start_date, finish_date, created_at) DESC, id DESC'
         );
     $stmt->execute([$bookId]);
     $sessions = [];

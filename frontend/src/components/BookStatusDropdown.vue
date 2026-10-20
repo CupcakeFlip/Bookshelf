@@ -1,11 +1,15 @@
 <script setup>
 import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import {removeBookStatus, saveBookStatus} from "@/api/books";
+import ReadingStatusDialog from "@/components/ReadingStatusDialog.vue";
 
 const dropdownElement = ref(null);
 const pending = ref(false);
 const isMenuOpen = ref(false);
 const errorMessage = ref("");
+const finishedDialogOpen = ref(false);
+const finishedDetails = ref(null);
+const dialogStatus = ref("finished");
 
 const statusOptions = [
   {value: null, label: "Not in library"},
@@ -25,6 +29,7 @@ const statusOptions = [
 /** @type {{book: BookStatusData}} */
 const props = defineProps({
   book: {type: Object, required: true},
+  beforeStatusChange: {type: Function, default: null},
 });
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["status-change", "menu-toggle"]);
@@ -86,10 +91,21 @@ async function selectStatus(status) {
   errorMessage.value = "";
   isMenuOpen.value = false;
   try {
+    let details = {};
+    if (status === "finished" || status === "dnf") {
+      dialogStatus.value = status;
+      finishedDialogOpen.value = true;
+      details = await new Promise(resolve => { finishedDetails.value = resolve; });
+      if (details === null) return;
+    }
+    if (props.beforeStatusChange) {
+      details = await props.beforeStatusChange(status, previous);
+      if (details === null) return;
+    }
     const saved =
       status === null
         ? await removeBookStatus(props.book)
-        : await saveBookStatus(props.book, status);
+        : await saveBookStatus(props.book, status, details);
     emit("status-change", {
       book: {...props.book, ...saved, status},
       status,
@@ -192,6 +208,7 @@ watch(isMenuOpen, (isOpen) => {
     >
       {{ errorMessage }}
     </p>
+    <ReadingStatusDialog v-model="finishedDialogOpen" :book="book" :status="dialogStatus" @confirm="finishedDetails?.($event)" @cancel="finishedDetails?.(null)" />
   </div>
 </template>
 

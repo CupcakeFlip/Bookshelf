@@ -32,6 +32,10 @@ async function fetchBooks(next = filters.value) {
     if (!controller.signal.aborted) loading.value = false;
   }
 }
+function updateBook({book: updatedBook}) {
+  const index = books.value.findIndex(book => String(book.hardcover_id) === String(updatedBook.hardcover_id));
+  if (index >= 0) books.value[index] = {...books.value[index], ...updatedBook};
+}
 const refreshBooks = () => fetchBooks(filters.value);
 onMounted(() => {
   fetchBooks();
@@ -49,6 +53,6 @@ onUnmounted(() => {
     <BookCollectionFilters @change="fetchBooks" />
     <p v-if="loading">Loading books...</p>
     <p v-else-if="error" class="alert alert-danger">{{ error }}</p>
-    <BookGrid v-else :books="books" @status-change="refreshBooks" />
+    <BookGrid v-else :books="books" @status-change="updateBook" />
   </main>
 </template>
