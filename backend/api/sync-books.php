@@ -36,7 +36,11 @@ function respond(array $payload, int $status = 200): never
  */
 function firstValue(array $values): mixed
 {
-    foreach ($values as $value) if ($value !== null && $value !== '') return $value;
+    foreach ($values as $value) {
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+    }
     return null;
 }
 
@@ -51,8 +55,10 @@ function normalizeBook(array $book): array
     $authors = [];
     foreach ($book['contributions'] ?? [] as $contribution) {
         $author = $contribution['author'] ?? null;
-        if (is_array($author) && !empty($author['name'])) $authors[(string)($author['id'] ?? $author['name'])] =
-            ['id' => $author['id'] ?? null, 'name' => $author['name']];
+        if (is_array($author) && !empty($author['name'])) {
+            $authors[(string)($author['id'] ?? $author['name'])] =
+                ['id' => $author['id'] ?? null, 'name' => $author['name']];
+        }
     }
     $series = null;
     $relation = $book['book_series'][0] ?? null;
@@ -66,8 +72,10 @@ function normalizeBook(array $book): array
     }
     $genres = [];
     foreach (($book['cached_tags']['Genre'] ?? []) as $genre) {
-        if (is_array($genre) && !empty($genre['tag']) && !empty($genre['tagSlug'])) $genres[$genre['tagSlug']] =
-            ['name' => $genre['tag'], 'slug' => $genre['tagSlug']];
+        if (is_array($genre) && !empty($genre['tag']) && !empty($genre['tagSlug'])) {
+            $genres[$genre['tagSlug']] =
+                ['name' => $genre['tag'], 'slug' => $genre['tagSlug']];
+        }
     }
     return [
         'hardcover_id' => (string)$book['id'],
@@ -118,7 +126,9 @@ function hardcoverRequest(string $query, array $variables, string $token): array
         $httpStatus >= 300 ||
         !is_array($response) ||
         !empty($response['errors'])
-    ) throw new RuntimeException('Hardcover request failed.');
+    ) {
+        throw new RuntimeException('Hardcover request failed.');
+    }
     return is_array($response['data'] ?? null) ? $response['data'] :
         throw new RuntimeException('Invalid Hardcover response.');
 }
@@ -131,7 +141,9 @@ function comparableAuthors(array $authors): array
         $id = trim((string)($author['id'] ?? ''));
         $name = trim((string)($author['name'] ?? ''));
         // Authors without an external ID cannot be persisted by updateBook().
-        if ($id === '' || $name === '') continue;
+        if ($id === '' || $name === '') {
+            continue;
+        }
         $normalized[] = ['id' => $id, 'name' => $name];
     }
     usort($normalized, static fn(array $a, array $b): int => [$a['id'], $a['name']] <=> [$b['id'], $b['name']]);
@@ -145,7 +157,9 @@ function comparableGenres(array $genres): array
     foreach ($genres as $genre) {
         $slug = trim((string)($genre['slug'] ?? ''));
         $name = trim((string)($genre['name'] ?? ''));
-        if ($slug === '' || $name === '') continue;
+        if ($slug === '' || $name === '') {
+            continue;
+        }
         $normalized[] = ['slug' => $slug, 'name' => $name];
     }
     usort($normalized, static fn(array $a, array $b): int => [$a['slug'], $a['name']] <=> [$b['slug'], $b['name']]);
@@ -155,7 +169,9 @@ function comparableGenres(array $genres): array
 /** Compares values as persisted strings, avoiding numeric/string representation noise. */
 function comparableValue(mixed $value): ?string
 {
-    if ($value === null || $value === '') return null;
+    if ($value === null || $value === '') {
+        return null;
+    }
     return trim((string)$value);
 }
 
@@ -179,20 +195,33 @@ function updateBook(PDO $pdo, array $book): bool
 {
     $stmt =
         $pdo->prepare(
-            'SELECT b.*, s.external_api_id AS series_external_api_id, s.name AS series_name FROM books b LEFT JOIN series s ON s.id = b.series_id WHERE b.external_api_id = ?'
+            'SELECT b.*, s.external_api_id AS series_external_api_id, s.name AS series_name 
+            FROM books b 
+            LEFT JOIN series s 
+            ON s.id = b.series_id 
+            WHERE b.external_api_id = ?'
         );
     $stmt->execute([$book['hardcover_id']]);
     $local = $stmt->fetch();
-    if (!$local) throw new RuntimeException('Book no longer exists.');
+    if (!$local) {
+        throw new RuntimeException('Book no longer exists.');
+    }
     $stmt =
         $pdo->prepare(
-            'SELECT a.external_api_id, a.name FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = ? ORDER BY a.external_api_id, a.name'
+            'SELECT a.external_api_id, a.name 
+            FROM book_authors ba 
+            JOIN authors a 
+            ON a.id = ba.author_id 
+            WHERE ba.book_id = ? 
+            ORDER BY a.external_api_id, a.name'
         );
     $stmt->execute([$local['id']]);
-    $localAuthors = comparableAuthors(array_map(
-        static fn(array $author): array => ['id' => $author['external_api_id'], 'name' => $author['name']],
-        $stmt->fetchAll()
-    ));
+    $localAuthors = comparableAuthors(
+        array_map(
+            static fn(array $author): array => ['id' => $author['external_api_id'], 'name' => $author['name']],
+            $stmt->fetchAll()
+        )
+    );
     $stmt =
         $pdo->prepare(
             'SELECT g.slug, g.name FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ? ORDER BY g.slug, g.name'
@@ -206,15 +235,18 @@ function updateBook(PDO $pdo, array $book): bool
     $localCover = comparableValue($local['cover_url']);
     $localReleaseDate = comparableValue($local['release_date']);
     $scalarChanges =
-        (comparableValue($book['title']) !== null && comparableValue($book['title']) !== comparableValue($local['title'])
+        (comparableValue($book['title']) !== null &&
+            comparableValue($book['title']) !== comparableValue($local['title'])
         ) ||
-        (comparableValue($book['headline'] ?? null) !== null && comparableValue($book['headline'] ?? null) !== $localHeadline
+        (comparableValue($book['headline'] ?? null) !== null &&
+            comparableValue($book['headline'] ?? null) !== $localHeadline
         ) ||
         (comparableValue($book['description']) !== null && comparableValue($book['description']) !== $localDescription
         ) ||
         (comparableValue($book['cover_url']) !== null && comparableValue($book['cover_url']) !== $localCover
         ) ||
-        (comparableValue($book['release_date']) !== null && comparableValue($book['release_date']) !== $localReleaseDate);
+        (comparableValue($book['release_date']) !== null &&
+            comparableValue($book['release_date']) !== $localReleaseDate);
     $seriesChanged =
         is_array($book['series']) &&
         $book['series']['id'] !== null &&
@@ -224,7 +256,8 @@ function updateBook(PDO $pdo, array $book): bool
             (
                 $book['series']['position'] !==
                 null &&
-                comparablePosition($book['series']['position']) !== comparablePosition($local['series_position'] ?? null)
+                comparablePosition($book['series']['position']) !==
+                comparablePosition($local['series_position'] ?? null)
             ));
     $authorsChanged =
         $remoteAuthors !== [] && $remoteAuthors !== $localAuthors;
@@ -232,7 +265,9 @@ function updateBook(PDO $pdo, array $book): bool
     $genresChanged =
         $remoteGenres !== [] && $remoteGenres !== $localGenres;
 
-    if (!$scalarChanges && !$seriesChanged && !$authorsChanged && !$genresChanged) return false;
+    if (!$scalarChanges && !$seriesChanged && !$authorsChanged && !$genresChanged) {
+        return false;
+    }
     $pdo->beginTransaction();
     try {
         $seriesId = $local['series_id'];
@@ -279,15 +314,19 @@ function updateBook(PDO $pdo, array $book): bool
             }
         }
         $params[] = $local['id'];
-        if ($scalarChanges || $seriesChanged) $pdo->prepare(
-            'UPDATE books SET ' .
-            implode(', ', $fields) .
-            ' WHERE id = ?'
-        )->execute($params);
+        if ($scalarChanges || $seriesChanged) {
+            $pdo->prepare(
+                'UPDATE books SET ' .
+                    implode(', ', $fields) .
+                    ' WHERE id = ?'
+            )->execute($params);
+        }
         if ($authorsChanged) {
             $pdo->prepare('DELETE FROM book_authors WHERE book_id = ?')->execute([$local['id']]);
             foreach ($book['authors'] as $author) {
-                if ($author['id'] === null) continue;
+                if ($author['id'] === null) {
+                    continue;
+                }
                 $stmt = $pdo->prepare('SELECT id FROM authors WHERE external_api_id = ?');
                 $stmt->execute([(string)$author['id']]);
                 $authorId = $stmt->fetchColumn();
@@ -320,16 +359,22 @@ function updateBook(PDO $pdo, array $book): bool
         $pdo->commit();
         return true;
     } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
 }
 
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') respond(['error' => 'Method not allowed.'], 405);
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    respond(['error' => 'Method not allowed.'], 405);
+}
 if (
     ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !==
     'XMLHttpRequest'
-) respond(['error' => 'This action must be initiated by the application.'], 403);
+) {
+    respond(['error' => 'This action must be initiated by the application.'], 403);
+}
 $origin = $_SERVER['HTTP_ORIGIN'] ?? null;
 $originHost = $origin !== null ? parse_url($origin, PHP_URL_HOST) : null;
 $requestHost = parse_url(
@@ -341,19 +386,26 @@ if ($origin !== null && $originHost !== $requestHost) {
     respond(['error' => 'Invalid request origin.'], 403);
 }
 $token = trim((string)getenv('HARDCOVER_API_TOKEN'));
-if ($token === '') respond(['error' => 'Hardcover API is not configured.'], 503);
+if ($token === '') {
+    respond(['error' => 'Hardcover API is not configured.'], 503);
+}
 $lock = fopen(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bookshelf-hardcover-sync.lock', 'c+');
-if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) respond(
-    ['error' => 'A synchronization is already running.'],
-    409
-);
+if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+    respond(
+        ['error' => 'A synchronization is already running.'],
+        409
+    );
+}
 $pdo = require __DIR__ . '/../settings/init.php';
 $rows =
     $pdo
-        ->query(
-            "SELECT id, external_api_id FROM books WHERE external_api_id IS NOT NULL AND external_api_id <> '' ORDER BY id"
-        )
-        ->fetchAll();
+    ->query(
+        "SELECT id, external_api_id 
+        FROM books 
+        WHERE external_api_id IS NOT NULL AND external_api_id <> '' 
+        ORDER BY id"
+    )
+    ->fetchAll();
 $result = [
     'total' => count($rows),
     'selected' => count($rows),
@@ -379,19 +431,29 @@ foreach (array_chunk($rows, SYNC_BATCH_SIZE) as $batch) {
                     static fn(int $id): bool => $id > 0
                 )
             );
-        if ($ids === []) throw new RuntimeException('No valid Hardcover IDs in batch.');
+        if ($ids === []) {
+            throw new RuntimeException('No valid Hardcover IDs in batch.');
+        }
         $data = hardcoverRequest($query, ['ids' => $ids], $token);
         $byId = [];
-        foreach ($data['books'] ?? [] as $raw)
-            if (is_array($raw) && isset($raw['id'])) $byId[(string)$raw['id']] = normalizeBook($raw);
+        foreach ($data['books'] ?? [] as $raw) {
+            if (is_array($raw) && isset($raw['id'])) {
+                $byId[(string)$raw['id']] = normalizeBook($raw);
+            }
+        }
         foreach ($batch as $row) {
             try {
                 $result['processed']++;
-                if (!isset($byId[(string)$row['external_api_id']])) throw new RuntimeException(
-                    'Hardcover book was not found.'
-                );
-                if (updateBook($pdo, $byId[(string)$row['external_api_id']])) $result['updated']++;
-                else $result['unchanged']++;
+                if (!isset($byId[(string)$row['external_api_id']])) {
+                    throw new RuntimeException(
+                        'Hardcover book was not found.'
+                    );
+                }
+                if (updateBook($pdo, $byId[(string)$row['external_api_id']])) {
+                    $result['updated']++;
+                } else {
+                    $result['unchanged']++;
+                }
             } catch (Throwable $exception) {
                 $result['failed']++;
                 $result['errors'][] =

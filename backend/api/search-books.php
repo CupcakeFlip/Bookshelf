@@ -108,10 +108,12 @@ function normalizeSeries(mixed $value): ?array
         return null;
     }
 
-    $id = firstValue([
-        $series['id'] ?? null,
-        $value['series_id'] ?? null,
-    ]);
+    $id = firstValue(
+        [
+            $series['id'] ?? null,
+            $value['series_id'] ?? null,
+        ]
+    );
 
     // A direct series object may legitimately expose its own id. Relation objects must use series.id above.
     if ($id === null && $series === []) {
@@ -188,23 +190,31 @@ function normalizeBook(mixed $book, ?array $details = null): array
         'headline' => firstValue([$details['headline'] ?? null, $book['headline'] ?? null]),
         'description' => firstValue([$details['description'] ?? null, $book['description'] ?? null]),
         'authors' => normalizeAuthors($contributions !== [] ? $contributions : $authorNames),
-        'cover_url' => firstValue([
-            $book['cover_url'] ?? null,
-            $book['image_url'] ?? null,
-            $image['url'] ?? null,
-            $cachedImage['url'] ?? null,
-        ]),
-        'series' => normalizeSeries(firstValue([
-            $book['featured_series'] ?? null,
-            $book['book_series'] ?? null,
-            $book['series'] ?? null,
-        ])),
+        'cover_url' => firstValue(
+            [
+                $book['cover_url'] ?? null,
+                $book['image_url'] ?? null,
+                $image['url'] ?? null,
+                $cachedImage['url'] ?? null,
+            ]
+        ),
+        'series' => normalizeSeries(
+            firstValue(
+                [
+                    $book['featured_series'] ?? null,
+                    $book['book_series'] ?? null,
+                    $book['series'] ?? null,
+                ]
+            )
+        ),
         'genres' => normalizeGenres($details['cached_tags'] ?? null),
-        'release_date' => firstValue([
-            $book['release_date'] ?? null,
-            $book['publication_date'] ?? null,
-            $book['published_date'] ?? null,
-        ]),
+        'release_date' => firstValue(
+            [
+                $book['release_date'] ?? null,
+                $book['publication_date'] ?? null,
+                $book['published_date'] ?? null,
+            ]
+        ),
     ];
 }
 
@@ -229,24 +239,29 @@ query BookDetail($id: Int!) {
 GRAPHQL;
 
     $curl = curl_init(HARDCOVER_API_URL);
-    curl_setopt_array($curl, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode([
-            'query' => $graphql,
-            'variables' => ['id' => $bookId],
-        ]),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT => 15,
-    ]);
+    curl_setopt_array(
+        $curl,
+        [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(
+                [
+                    'query' => $graphql,
+                    'variables' => ['id' => $bookId],
+                ]
+            ),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 15,
+        ]
+    );
 
     $responseBody = curl_exec($curl);
-    $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $httpStatus = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
 
     if ($responseBody === false || $httpStatus < 200 || $httpStatus >= 300) {
@@ -264,7 +279,7 @@ GRAPHQL;
 }
 
 // Validate the incoming search term before the API call.
-$query = trim((string) ($_GET['q'] ?? ''));
+$query = trim((string)($_GET['q'] ?? ''));
 if ($query === '') {
     respond(['error' => 'A non-empty q search parameter is required.'], 400);
 }
@@ -274,7 +289,7 @@ if (strlen($query) > 200) {
 }
 
 // Make sure the external API token is configured before contacting Hardcover.
-$token = trim((string) getenv('HARDCOVER_API_TOKEN'));
+$token = trim((string)getenv('HARDCOVER_API_TOKEN'));
 if ($token === '') {
     respond(['error' => 'The Hardcover API is not configured.'], 503);
 }
@@ -289,29 +304,34 @@ query SearchBooks($query: String!) {
 }
 GRAPHQL;
 
-$requestBody = json_encode([
-    'query' => $graphql,
-    'variables' => ['query' => $query],
-]);
+$requestBody = json_encode(
+    [
+        'query' => $graphql,
+        'variables' => ['query' => $query],
+    ]
+);
 
 // Send the request to Hardcover with the bearer token and a short timeout.
 $curl = curl_init(HARDCOVER_API_URL);
-curl_setopt_array($curl, [
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => $requestBody,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        'Accept: application/json',
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json',
-    ],
-    CURLOPT_CONNECTTIMEOUT => 5,
-    CURLOPT_TIMEOUT => 15,
-]);
+curl_setopt_array(
+    $curl,
+    [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $requestBody,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15,
+    ]
+);
 
 $responseBody = curl_exec($curl);
 $curlError = curl_error($curl);
-$httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+$httpStatus = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
 if ($responseBody === false) {
     respond(['error' => 'Could not reach the Hardcover API.'], 502);
@@ -352,17 +372,19 @@ $normalizedBooks = [];
 
 foreach ($hits as $hit) {
     $book = is_array($hit['document'] ?? null) ? $hit['document'] : null;
-    $bookId = is_array($book) && is_numeric($book['id'] ?? null) ? (int) $book['id'] : null;
+    $bookId = is_array($book) && is_numeric($book['id'] ?? null) ? (int)$book['id'] : null;
     $details = $bookId === null ? null : fetchBookDetails($bookId, $token);
     $normalizedBooks[] = normalizeBook($hit, $details);
 }
 
-respond([
-    'query' => $query,
-    'results' => $normalizedBooks,
-    'metadata' => [
-        'found' => $searchResults['found'] ?? 0,
-        'page' => $searchResults['page'] ?? 1,
-        'out_of' => $searchResults['out_of'] ?? 0,
-    ],
-]);
+respond(
+    [
+        'query' => $query,
+        'results' => $normalizedBooks,
+        'metadata' => [
+            'found' => $searchResults['found'] ?? 0,
+            'page' => $searchResults['page'] ?? 1,
+            'out_of' => $searchResults['out_of'] ?? 0,
+        ],
+    ]
+);

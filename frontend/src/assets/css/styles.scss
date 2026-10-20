@@ -1,11 +1,9 @@
 // 1. Include functions first (so you can manipulate colors, SVGs, calc, etc.)
 @import "../../../node_modules/bootstrap/scss/functions";
 
-
 // -------------------------------------------------
 // 2. Default variable overrides
 // -------------------------------------------------
-
 
 // -------------------------------------------------
 // Base colours
@@ -21,7 +19,6 @@ $text-muted: #c2afa8;
 
 $border-soft: #4a3836;
 $border-strong: #614b46;
-
 
 // -------------------------------------------------
 // Bootstrap theme colours
@@ -40,7 +37,6 @@ $paused: #675a83;
 $light: $text-main;
 $dark: $bg-main;
 
-
 // -------------------------------------------------
 // Hover / active colours
 // -------------------------------------------------
@@ -56,7 +52,6 @@ $reading-hover: #a26741;
 $finished-hover: #647f60;
 $paused-hover: #796b97;
 $dnf-hover: #965656;
-
 
 // -------------------------------------------------
 // General Bootstrap styling
@@ -77,7 +72,7 @@ $link-hover-color: #c99bd4;
 $card-bg: $bg-surface;
 $card-color: $text-main;
 $card-border-color: $border-soft;
-$card-border-radius: .85rem;
+$card-border-radius: 0.85rem;
 
 $input-bg: $bg-surface-2;
 $input-color: $text-main;
@@ -87,7 +82,7 @@ $input-placeholder-color: #a89188;
 $input-focus-bg: $bg-surface-2;
 $input-focus-color: $text-main;
 $input-focus-border-color: #9b67a8;
-$input-focus-box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+$input-focus-box-shadow: 0 0 0 0.2rem rgba(166, 111, 181, 0.28);
 
 $form-select-bg: $bg-surface-2;
 $form-select-color: $text-main;
@@ -121,10 +116,10 @@ $list-group-hover-bg: $bg-surface-2;
 $table-color: $text-main;
 $table-bg: transparent;
 $table-border-color: $border-soft;
-$table-striped-bg: rgba(255, 255, 255, .025);
-$table-hover-bg: rgba(255, 255, 255, .045);
+$table-striped-bg: rgba(255, 255, 255, 0.025);
+$table-hover-bg: rgba(255, 255, 255, 0.045);
 
-$navbar-dark-color: rgba(245, 236, 232, .8);
+$navbar-dark-color: rgba(245, 236, 232, 0.8);
 $navbar-dark-hover-color: $text-main;
 $navbar-dark-active-color: $text-main;
 $navbar-dark-brand-color: $text-main;
@@ -132,97 +127,90 @@ $navbar-dark-brand-hover-color: $text-main;
 
 $navbar-toggler-focus-width: 0.05rem;
 
-
 $nav-link-color: $text-muted;
 $nav-link-hover-color: $text-main;
 
 $btn-font-weight: 600;
-$btn-padding-y: .55rem;
+$btn-padding-y: 0.55rem;
 $btn-padding-x: 1rem;
-$btn-border-radius: .65rem;
-$btn-focus-width: .2rem;
-$btn-focus-box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
+$btn-border-radius: 0.65rem;
+$btn-focus-width: 0.2rem;
+$btn-focus-box-shadow: 0 0 0 0.2rem rgba(166, 111, 181, 0.28);
 
 $badge-font-weight: 600;
-$badge-padding-y: .5em;
-$badge-padding-x: .8em;
+$badge-padding-y: 0.5em;
+$badge-padding-x: 0.8em;
 $badge-border-radius: 999px;
-
 
 // 3. Include remainder of required Bootstrap stylesheets
 @import "../../../node_modules/bootstrap/scss/variables";
 @import "../../../node_modules/bootstrap/scss/variables-dark";
-
 
 // -------------------------------------------------
 // 4. Custom theme colour map
 // -------------------------------------------------
 
 $custom-theme-colors: (
-  "want-read": #4f6789,
-  "reading": #8a5738,
-  "finished": #526b4f,
-  "paused": #675a83,
-  "dnf": #7f4646,
-  "surface": #221918,
-  "surface-2": #2e2221
+    "want-read": #4f6789,
+    "reading": #8a5738,
+    "finished": #526b4f,
+    "paused": #675a83,
+    "dnf": #7f4646,
+    "surface": #221918,
+    "surface-2": #2e2221,
 );
 
 $theme-colors: map-merge($theme-colors, $custom-theme-colors);
 
-
 // Import the Bootstrap components used by the project
 @import "bootstrapComponents";
-
 
 // -------------------------------------------------
 // 5. Project styling
 // -------------------------------------------------
-
 
 // -------------------------------------------------
 // Base
 // -------------------------------------------------
 
 html {
-  color-scheme: dark;
+    color-scheme: dark;
 }
 
 body {
-  color: $text-main;
-  background-color: $bg-main;
+    color: $text-main;
+    background-color: $bg-main;
 }
 
 a {
-  text-decoration: none;
+    text-decoration: none;
 
-  &:hover,
-  &:focus {
-    text-decoration: underline;
-  }
+    &:hover,
+    &:focus {
+        text-decoration: underline;
+    }
 }
 
 .text-muted,
 .text-body-secondary {
-  color: $text-muted !important;
+    color: $text-muted !important;
 }
 
 hr {
-  opacity: 1;
-  border-color: $border-soft;
+    opacity: 1;
+    border-color: $border-soft;
 }
-
 
 // -------------------------------------------------
 // Surfaces
 // -------------------------------------------------
 
 .bg-surface {
-  background-color: $bg-surface !important;
+    background-color: $bg-surface !important;
 }
 
 .bg-surface-2 {
-  background-color: $bg-surface-2 !important;
+    background-color: $bg-surface-2 !important;
 }
 
 .card,
@@ -230,54 +218,53 @@ hr {
 .dropdown-menu,
 .offcanvas,
 .list-group-item {
-  color: $text-main;
-  border-color: $border-soft;
-  background-color: $bg-surface;
+    color: $text-main;
+    border-color: $border-soft;
+    background-color: $bg-surface;
 }
 
 .card-header,
 .card-footer,
 .modal-header,
 .modal-footer {
-  border-color: $border-soft;
+    border-color: $border-soft;
 }
-
 
 // -------------------------------------------------
 // Navbar
 // -------------------------------------------------
 
 .navbar {
-  border-bottom: 1px solid $border-soft;
-  background-color: $bg-surface !important;
+    border-bottom: 1px solid $border-soft;
+    background-color: $bg-surface !important;
 }
 
 .navbar-brand,
 .navbar .nav-link {
-  color: $text-main;
+    color: $text-main;
 }
 
 .navbar .nav-link {
-  opacity: .8;
+    opacity: 0.8;
 
-  &:hover,
-  &:focus,
-  &.active {
-    opacity: 1;
-    color: $text-main;
-  }
+    &:hover,
+    &:focus,
+    &.active {
+        opacity: 1;
+        color: $text-main;
+    }
 }
 
 .navbar-toggler-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25em;
-  height: 1.25em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25em;
+    height: 1.25em;
 }
 
 .navbar-toggler {
-  padding: .5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
 }
 
 // -------------------------------------------------
@@ -285,37 +272,36 @@ hr {
 // -------------------------------------------------
 
 .btn-primary {
-  --bs-btn-color: #{$text-main};
-  --bs-btn-bg: #{$primary};
-  --bs-btn-border-color: #{$primary};
+    --bs-btn-color: #{$text-main};
+    --bs-btn-bg: #{$primary};
+    --bs-btn-border-color: #{$primary};
 
-  --bs-btn-hover-color: #{$text-main};
-  --bs-btn-hover-bg: #{$primary-hover};
-  --bs-btn-hover-border-color: #{$primary-hover};
+    --bs-btn-hover-color: #{$text-main};
+    --bs-btn-hover-bg: #{$primary-hover};
+    --bs-btn-hover-border-color: #{$primary-hover};
 
-  --bs-btn-active-color: #{$text-main};
-  --bs-btn-active-bg: #{$primary-active};
-  --bs-btn-active-border-color: #{$primary-active};
+    --bs-btn-active-color: #{$text-main};
+    --bs-btn-active-bg: #{$primary-active};
+    --bs-btn-active-border-color: #{$primary-active};
 
-  --bs-btn-disabled-color: #{$text-main};
-  --bs-btn-disabled-bg: #{$primary};
-  --bs-btn-disabled-border-color: #{$primary};
+    --bs-btn-disabled-color: #{$text-main};
+    --bs-btn-disabled-bg: #{$primary};
+    --bs-btn-disabled-border-color: #{$primary};
 }
 
 .btn-secondary {
-  --bs-btn-color: #{$text-main};
-  --bs-btn-bg: #{$secondary};
-  --bs-btn-border-color: #{$secondary};
+    --bs-btn-color: #{$text-main};
+    --bs-btn-bg: #{$secondary};
+    --bs-btn-border-color: #{$secondary};
 
-  --bs-btn-hover-color: #{$text-main};
-  --bs-btn-hover-bg: #{$secondary-hover};
-  --bs-btn-hover-border-color: #{$secondary-hover};
+    --bs-btn-hover-color: #{$text-main};
+    --bs-btn-hover-bg: #{$secondary-hover};
+    --bs-btn-hover-border-color: #{$secondary-hover};
 
-  --bs-btn-active-color: #{$text-main};
-  --bs-btn-active-bg: #{$secondary-active};
-  --bs-btn-active-border-color: #{$secondary-active};
+    --bs-btn-active-color: #{$text-main};
+    --bs-btn-active-bg: #{$secondary-active};
+    --bs-btn-active-border-color: #{$secondary-active};
 }
-
 
 // -------------------------------------------------
 // Status buttons and badges
@@ -323,81 +309,80 @@ hr {
 
 .status-badge,
 .btn-status {
-  font-weight: 600;
-  color: $text-main !important;
-  border: 0;
+    font-weight: 600;
+    color: $text-main !important;
+    border: 0;
 }
 
 .status-badge {
-  padding: .5em .8em;
-  border-radius: 999px;
+    padding: 0.5em 0.8em;
+    border-radius: 999px;
 }
 
 .status-want-read,
 .btn-want-read,
 .text-bg-want-read {
-  color: $text-main !important;
-  background-color: #4f6789 !important;
+    color: $text-main !important;
+    background-color: #4f6789 !important;
 }
 
 .status-reading,
 .btn-reading,
 .text-bg-reading {
-  color: $text-main !important;
-  background-color: #8a5738 !important;
+    color: $text-main !important;
+    background-color: #8a5738 !important;
 }
 
 .status-finished,
 .btn-finished,
 .text-bg-finished {
-  color: $text-main !important;
-  background-color: #526b4f !important;
+    color: $text-main !important;
+    background-color: #526b4f !important;
 }
 
 .status-paused,
 .btn-paused,
 .text-bg-paused {
-  color: $text-main !important;
-  background-color: #675a83 !important;
+    color: $text-main !important;
+    background-color: #675a83 !important;
 }
 
 .status-dnf,
 .btn-dnf,
 .text-bg-dnf {
-  color: $text-main !important;
-  background-color: #7f4646 !important;
+    color: $text-main !important;
+    background-color: #7f4646 !important;
 }
 
 .btn-want-read:hover,
 .btn-want-read:focus {
-  color: $text-main !important;
-  background-color: $want-read-hover !important;
+    color: $text-main !important;
+    background-color: $want-read-hover !important;
 }
 
 .btn-reading:hover,
 .btn-reading:focus {
-  color: $text-main !important;
-  background-color: $reading-hover !important;
+    color: $text-main !important;
+    background-color: $reading-hover !important;
 }
 
 .btn-finished:hover,
 .btn-finished:focus {
-  color: $text-main !important;
-  background-color: $finished-hover !important;
+    color: $text-main !important;
+    background-color: $finished-hover !important;
 }
 
 .btn-paused:hover,
 .btn-paused:focus {
-  color: $text-main !important;
-  background-color: $paused-hover !important;
+    color: $text-main !important;
+    background-color: $paused-hover !important;
 }
 
 .btn-dnf:hover,
 .btn-dnf:focus {
-  color: $text-main !important;
-  background-color: $dnf-hover !important;
+    color: $text-main !important;
+    background-color: $dnf-hover !important;
 }
-
 
 // -------------------------------------------------
 // Forms
@@ -405,186 +390,181 @@ hr {
 
 .form-control,
 .form-select {
-  color: $text-main;
-  border-color: $border-strong;
-  background-color: $bg-surface-2;
-
-  &::placeholder {
-    opacity: 1;
-    color: $input-placeholder-color;
-  }
-
-  &:focus {
     color: $text-main;
-    border-color: #9b67a8;
+    border-color: $border-strong;
     background-color: $bg-surface-2;
-    box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
-  }
+
+    &::placeholder {
+        opacity: 1;
+        color: $input-placeholder-color;
+    }
+
+    &:focus {
+        color: $text-main;
+        border-color: #9b67a8;
+        background-color: $bg-surface-2;
+        box-shadow: 0 0 0 0.2rem rgba(166, 111, 181, 0.28);
+    }
 }
 
 .form-select option {
-  color: $text-main;
-  background-color: $bg-surface;
+    color: $text-main;
+    background-color: $bg-surface;
 }
 
 .form-check-input {
-  border-color: $border-strong;
-  background-color: $bg-surface-2;
+    border-color: $border-strong;
+    background-color: $bg-surface-2;
 
-  &:checked {
-    border-color: $primary;
-    background-color: $primary;
-  }
+    &:checked {
+        border-color: $primary;
+        background-color: $primary;
+    }
 
-  &:focus {
-    border-color: #9b67a8;
-    box-shadow: 0 0 0 .2rem rgba(166, 111, 181, .28);
-  }
+    &:focus {
+        border-color: #9b67a8;
+        box-shadow: 0 0 0 0.2rem rgba(166, 111, 181, 0.28);
+    }
 }
 
 .form-label {
-  color: $text-main;
+    color: $text-main;
 }
-
 
 // -------------------------------------------------
 // Dropdowns
 // -------------------------------------------------
 
 .dropdown-item {
-  color: $text-main;
-
-  &:hover,
-  &:focus {
     color: $text-main;
-    background-color: $bg-surface-2;
-  }
 
-  &.active,
-  &:active {
-    color: $text-main;
-    background-color: $primary;
-  }
+    &:hover,
+    &:focus {
+        color: $text-main;
+        background-color: $bg-surface-2;
+    }
+
+    &.active,
+    &:active {
+        color: $text-main;
+        background-color: $primary;
+    }
 }
 
 .dropdown-divider {
-  border-color: $border-soft;
+    border-color: $border-soft;
 }
-
 
 // -------------------------------------------------
 // Tables
 // -------------------------------------------------
 
 .table {
-  --bs-table-color: #{$text-main};
-  --bs-table-bg: transparent;
-  --bs-table-border-color: #{$border-soft};
+    --bs-table-color: #{$text-main};
+    --bs-table-bg: transparent;
+    --bs-table-border-color: #{$border-soft};
 
-  --bs-table-striped-bg: rgba(255, 255, 255, .025);
-  --bs-table-striped-color: #{$text-main};
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.025);
+    --bs-table-striped-color: #{$text-main};
 
-  --bs-table-hover-bg: rgba(255, 255, 255, .045);
-  --bs-table-hover-color: #{$text-main};
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.045);
+    --bs-table-hover-color: #{$text-main};
 }
-
 
 // -------------------------------------------------
 // List groups
 // -------------------------------------------------
 
 .list-group-item-action {
-  color: $text-main;
-
-  &:hover,
-  &:focus {
     color: $text-main;
-    background-color: $bg-surface-2;
-  }
 
-  &.active {
-    color: $text-main;
-    border-color: $primary;
-    background-color: $primary;
-  }
+    &:hover,
+    &:focus {
+        color: $text-main;
+        background-color: $bg-surface-2;
+    }
+
+    &.active {
+        color: $text-main;
+        border-color: $primary;
+        background-color: $primary;
+    }
 }
-
 
 // -------------------------------------------------
 // Pagination
 // -------------------------------------------------
 
 .pagination {
-  --bs-pagination-color: #{$text-main};
-  --bs-pagination-bg: #{$bg-surface};
-  --bs-pagination-border-color: #{$border-soft};
+    --bs-pagination-color: #{$text-main};
+    --bs-pagination-bg: #{$bg-surface};
+    --bs-pagination-border-color: #{$border-soft};
 
-  --bs-pagination-hover-color: #{$text-main};
-  --bs-pagination-hover-bg: #{$bg-surface-2};
-  --bs-pagination-hover-border-color: #{$border-soft};
+    --bs-pagination-hover-color: #{$text-main};
+    --bs-pagination-hover-bg: #{$bg-surface-2};
+    --bs-pagination-hover-border-color: #{$border-soft};
 
-  --bs-pagination-active-color: #{$text-main};
-  --bs-pagination-active-bg: #{$primary};
-  --bs-pagination-active-border-color: #{$primary};
+    --bs-pagination-active-color: #{$text-main};
+    --bs-pagination-active-bg: #{$primary};
+    --bs-pagination-active-border-color: #{$primary};
 
-  --bs-pagination-disabled-color: #{$text-muted};
-  --bs-pagination-disabled-bg: #{$bg-surface};
-  --bs-pagination-disabled-border-color: #{$border-soft};
+    --bs-pagination-disabled-color: #{$text-muted};
+    --bs-pagination-disabled-bg: #{$bg-surface};
+    --bs-pagination-disabled-border-color: #{$border-soft};
 }
-
 
 // -------------------------------------------------
 // Book-specific components
 // -------------------------------------------------
 
 .book-card {
-  overflow: hidden;
-  transition: transform .18s ease,
-  background-color .18s ease,
-  border-color .18s ease;
-  border: 1px solid $border-soft;
-  border-radius: .85rem;
+    overflow: hidden;
+    transition:
+        transform 0.18s ease,
+        background-color 0.18s ease,
+        border-color 0.18s ease;
+    border: 1px solid $border-soft;
+    border-radius: 0.85rem;
 
-  background-color: $bg-surface;
+    background-color: $bg-surface;
 
-  &:hover {
-    transform: translateY(-2px);
-    border-color: $border-strong;
-    background-color: $bg-surface-hover;
-  }
+    &:hover {
+        transform: translateY(-2px);
+        border-color: $border-strong;
+        background-color: $bg-surface-hover;
+    }
 }
 
 .book-cover {
-  display: block;
-  width: 100%;
-  object-fit: cover;
+    display: block;
+    width: 100%;
+    object-fit: cover;
 }
 
 .book-title {
-  font-weight: 600;
-  color: $text-main;
+    font-weight: 600;
+    color: $text-main;
 }
 
 .book-meta {
-  color: $text-muted;
+    color: $text-muted;
 }
 
 .sidebar,
 .app-panel {
-  border-color: $border-soft;
-  background-color: $bg-surface;
+    border-color: $border-soft;
+    background-color: $bg-surface;
 }
-
 
 // -------------------------------------------------
 // Selection / scrollbar
 // -------------------------------------------------
 
 ::selection {
-  color: $text-main;
-  background-color: $primary;
+    color: $text-main;
+    background-color: $primary;
 }
 
 * {
-  scrollbar-color: $border-strong $bg-main;
+    scrollbar-color: $border-strong $bg-main;
 }

@@ -33,7 +33,9 @@ function respond(array $payload, int $status = 200): never
 function positiveId(mixed $value, string $field): int
 {
     $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-    if ($id === false) respond(['error' => $field . ' must be a positive integer.'], 400);
+    if ($id === false) {
+        respond(['error' => $field . ' must be a positive integer.'], 400);
+    }
     return (int)$id;
 }
 
@@ -45,7 +47,9 @@ function positiveId(mixed $value, string $field): int
 function requestBody(): array
 {
     $body = json_decode((string)file_get_contents('php://input'), true);
-    if (!is_array($body)) respond(['error' => 'A valid JSON body is required.'], 400);
+    if (!is_array($body)) {
+        respond(['error' => 'A valid JSON body is required.'], 400);
+    }
     return $body;
 }
 
@@ -58,10 +62,16 @@ function requestBody(): array
  */
 function savedList(PDO $pdo, int $listId): array
 {
-    $stmt = $pdo->prepare('SELECT id, name, description, created_at, updated_at FROM lists WHERE id = ?');
+    $stmt = $pdo->prepare(
+        'SELECT id, name, description, created_at, updated_at 
+         FROM lists 
+         WHERE id = ?'
+    );
     $stmt->execute([$listId]);
     $list = $stmt->fetch();
-    if (!$list) respond(['error' => 'The list was not found.'], 404);
+    if (!$list) {
+        respond(['error' => 'The list was not found.'], 404);
+    }
 
     $stmt = $pdo->prepare(
         'SELECT b.id, b.external_api_id AS hardcover_id, b.title, b.cover_url
@@ -87,10 +97,14 @@ function savedList(PDO $pdo, int $listId): array
  */
 function validatedBookIds(PDO $pdo, array $bookIds): array
 {
-    $bookIds = array_values(array_unique(array_map(
-        static fn(mixed $bookId): int => positiveId($bookId, 'book_id'),
-        $bookIds
-    )));
+    $bookIds = array_values(
+        array_unique(
+            array_map(
+                static fn(mixed $bookId): int => positiveId($bookId, 'book_id'),
+                $bookIds
+            )
+        )
+    );
 
     if ($bookIds !== []) {
         $placeholders = implode(',', array_fill(0, count($bookIds), '?'));
@@ -118,10 +132,14 @@ function validatedBookIds(PDO $pdo, array $bookIds): array
 function replaceListBooks(PDO $pdo, int $listId, array $bookIds): void
 {
     $pdo->prepare('DELETE FROM book_lists WHERE lists_id = ?')->execute([$listId]);
-    if ($bookIds === []) return;
+    if ($bookIds === []) {
+        return;
+    }
 
     $stmt = $pdo->prepare('INSERT INTO book_lists (book_id, lists_id) VALUES (?, ?)');
-    foreach ($bookIds as $bookId) $stmt->execute([$bookId, $listId]);
+    foreach ($bookIds as $bookId) {
+        $stmt->execute([$bookId, $listId]);
+    }
 }
 
 $pdo = require __DIR__ . '/../settings/init.php';
@@ -129,7 +147,9 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requestedId = $_GET['id'] ?? null;
 
 if ($method === 'GET') {
-    if ($requestedId !== null) respond(savedList($pdo, positiveId($requestedId, 'id')));
+    if ($requestedId !== null) {
+        respond(savedList($pdo, positiveId($requestedId, 'id')));
+    }
 
     $lists = [];
     foreach ($pdo->query('SELECT id FROM lists ORDER BY name, id')->fetchAll(PDO::FETCH_COLUMN) as $listId) {
@@ -141,13 +161,17 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $payload = requestBody();
     $name = trim((string)($payload['name'] ?? $payload['title'] ?? ''));
-    if ($name === '' || strlen($name) > 255) respond(['error' => 'name is required and must be at most 255 characters.'], 422);
+    if ($name === '' || strlen($name) > 255) {
+        respond(['error' => 'name is required and must be at most 255 characters.'], 422);
+    }
     $description = $payload['description'] ?? null;
     if ($description !== null && (!is_string($description) || strlen($description) > 255)) {
         respond(['error' => 'description must be at most 255 characters.'], 422);
     }
     $bookIds = $payload['book_ids'] ?? [];
-    if (!is_array($bookIds)) respond(['error' => 'book_ids must be an array.'], 422);
+    if (!is_array($bookIds)) {
+        respond(['error' => 'book_ids must be an array.'], 422);
+    }
     $bookIds = validatedBookIds($pdo, $bookIds);
 
     $pdo->beginTransaction();
@@ -158,7 +182,9 @@ if ($method === 'POST') {
         replaceListBooks($pdo, $listId, $bookIds);
         $pdo->commit();
     } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
     respond(savedList($pdo, $listId), 201);
@@ -172,23 +198,34 @@ if ($method === 'PUT' || $method === 'PATCH') {
         ? trim((string)($payload['name'] ?? $payload['title']))
         : $current['name'];
     $description = array_key_exists('description', $payload) ? $payload['description'] : $current['description'];
-    if ($name === '' || strlen($name) > 255) respond(['error' => 'name must be at most 255 characters.'], 422);
+    if ($name === '' || strlen($name) > 255) {
+        respond(['error' => 'name must be at most 255 characters.'], 422);
+    }
     if ($description !== null && (!is_string($description) || strlen($description) > 255)) {
         respond(['error' => 'description must be at most 255 characters.'], 422);
     }
     $bookIds = null;
     if (array_key_exists('book_ids', $payload)) {
-        if (!is_array($payload['book_ids'])) respond(['error' => 'book_ids must be an array.'], 422);
+        if (!is_array($payload['book_ids'])) {
+            respond(['error' => 'book_ids must be an array.'], 422);
+        }
         $bookIds = validatedBookIds($pdo, $payload['book_ids']);
     }
 
     $pdo->beginTransaction();
     try {
-        $pdo->prepare('UPDATE lists SET name = ?, description = ? WHERE id = ?')->execute([$name, $description, $listId]);
-        if ($bookIds !== null) replaceListBooks($pdo, $listId, $bookIds);
+        $pdo
+            ->prepare('UPDATE lists SET name = ?, description = ? WHERE id = ?')->execute(
+                [$name, $description, $listId]
+            );
+        if ($bookIds !== null) {
+            replaceListBooks($pdo, $listId, $bookIds);
+        }
         $pdo->commit();
     } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $exception;
     }
     respond(savedList($pdo, $listId));
@@ -197,7 +234,9 @@ if ($method === 'PUT' || $method === 'PATCH') {
 if ($method === 'DELETE') {
     $stmt = $pdo->prepare('DELETE FROM lists WHERE id = ?');
     $stmt->execute([$listId]);
-    if ($stmt->rowCount() === 0) respond(['error' => 'The list was not found.'], 404);
+    if ($stmt->rowCount() === 0) {
+        respond(['error' => 'The list was not found.'], 404);
+    }
     respond(['message' => 'The list was deleted.']);
 }
 

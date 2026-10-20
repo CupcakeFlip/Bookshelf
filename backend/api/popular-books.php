@@ -43,25 +43,29 @@ function hardcoverRequest(
     string $query,
     array  $variables,
     string $token
-): array
-{
+): array {
     $curl = curl_init(HARDCOVER_API_URL);
 
-    curl_setopt_array($curl, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode([
-            'query' => $query,
-            'variables' => $variables,
-        ]),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $token,
-        ],
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT => 20,
-    ]);
+    curl_setopt_array(
+        $curl,
+        [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(
+                [
+                    'query' => $query,
+                    'variables' => $variables,
+                ]
+            ),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $token,
+            ],
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 20,
+        ]
+    );
 
     $body = curl_exec($curl);
     $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -165,14 +169,23 @@ function normalizeBook(array $book): array
  */
 function enrichStatuses(PDO $pdo, array $books): array
 {
-    if ($books === []) return $books;
+    if ($books === []) {
+        return $books;
+    }
     $ids = array_map(static fn(array $book): string => (string)$book['hardcover_id'], $books);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $pdo->prepare("SELECT b.external_api_id, ub.status FROM books b JOIN user_books ub ON ub.book_id = b.id WHERE b.external_api_id IN ($placeholders)");
+    $stmt =
+        $pdo->prepare(
+            "SELECT b.external_api_id, ub.status FROM books b JOIN user_books ub ON ub.book_id = b.id WHERE b.external_api_id IN ($placeholders)"
+        );
     $stmt->execute($ids);
     $statuses = [];
-    foreach ($stmt->fetchAll() as $row) $statuses[(string)$row['external_api_id']] = $row['status'];
-    foreach ($books as &$book) $book['status'] = $statuses[(string)$book['hardcover_id']] ?? null;
+    foreach ($stmt->fetchAll() as $row) {
+        $statuses[(string)$row['external_api_id']] = $row['status'];
+    }
+    foreach ($books as &$book) {
+        $book['status'] = $statuses[(string)$book['hardcover_id']] ?? null;
+    }
     unset($book);
     return $books;
 }
