@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 
 import {
@@ -18,7 +18,7 @@ import BookDetailsSkeleton from "@/components/BookDetailsSkeleton.vue";
 import LoadingIndicator from "@/components/LoadingIndicator.vue";
 import ButtonSpinner from "@/components/ButtonSpinner.vue";
 import {bookText} from "@/utils/bookText";
-import {optimizedCoverUrl, optimizedCoverSrcset} from "@/utils/coverImages";
+import {optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
 
 const route = useRoute();
 //const isOwned = ref(false);
@@ -37,6 +37,36 @@ const deletingSessionIds = ref([]);
 const formatsFetching = ref(false);
 const pendingFormat = ref(null);
 const bookContent = computed(() => bookText(book.value ?? {}));
+const descriptionElement = ref(null);
+const descriptionExpanded = ref(false);
+const descriptionOverflows = ref(false);
+const isMobileDescription = ref(false);
+let descriptionObserver;
+let mobileQuery;
+
+function measureDescription() {
+    const element = descriptionElement.value;
+    if (!element || !isMobileDescription.value) {
+        descriptionOverflows.value = false;
+        return;
+    }
+    descriptionOverflows.value = element.scrollHeight > element.clientHeight + 1;
+}
+
+function updateDescriptionViewport() {
+    isMobileDescription.value = mobileQuery.matches;
+    nextTick(measureDescription);
+}
+
+watch(descriptionElement, (element) => {
+    descriptionObserver?.disconnect();
+    if (element && typeof ResizeObserver !== "undefined") {
+        descriptionObserver = new ResizeObserver(measureDescription);
+        descriptionObserver.observe(element);
+    }
+    nextTick(measureDescription);
+});
+watch(bookContent, () => nextTick(measureDescription));
 let detailsRequest = 0;
 let sessionsRequest = 0;
 
@@ -67,7 +97,7 @@ async function fetchBook() {
             }).finally(() => {
                 if (request === detailsRequest) formatsFetching.value = false;
             });
-            loadSessions(details);
+            await loadSessions(details);
         } else {
             ownedFormats.value = [];
             sessions.value = [];
@@ -164,7 +194,8 @@ async function saveSession(session) {
 }
 
 async function removeSession(session) {
-    if (deletingSessionIds.value.includes(session.id) || (sessionSaving.value && editingSession.value?.id === session.id)) return;
+    if (deletingSessionIds.value.includes(session.id) ||
+        (sessionSaving.value && editingSession.value?.id === session.id)) return;
     if (!window.confirm("Delete this reading session?")) return;
     deletingSessionIds.value = [...deletingSessionIds.value, session.id];
     const targetBookId = book.value?.id;
@@ -230,12 +261,17 @@ async function handleStatusChange({book: updatedBook, status}) {
 }
 
 onMounted(() => {
+    mobileQuery = window.matchMedia("(max-width: 767.98px)");
+    mobileQuery.addEventListener("change", updateDescriptionViewport);
+    updateDescriptionViewport();
     // Refresh after the global sync event because the current route may already
     // be open when shared metadata is updated.
     fetchBook();
     window.addEventListener("bookshelf:books-synced", fetchBook);
 });
 watch(() => route.params.hardcoverId, () => {
+    descriptionExpanded.value = false;
+    descriptionOverflows.value = false;
     ++sessionsRequest;
     book.value = null;
     ownedFormats.value = [];
@@ -245,6 +281,8 @@ watch(() => route.params.hardcoverId, () => {
     fetchBook();
 });
 onUnmounted(() => {
+    descriptionObserver?.disconnect();
+    mobileQuery?.removeEventListener("change", updateDescriptionViewport);
     ++detailsRequest;
     ++sessionsRequest;
     window.removeEventListener("bookshelf:books-synced", fetchBook);
@@ -258,16 +296,16 @@ onUnmounted(() => {
         <div class="wrapper">
             <section v-if="loading && !book" aria-busy="true" aria-label="Book details">
                 <span class="visually-hidden" role="status">Loading book details…</span>
-                <BookDetailsSkeleton />
+                <BookDetailsSkeleton/>
             </section>
 
-            <LoadingIndicator v-if="loading && book" label="Updating book details…" small class="mb-3" />
+            <LoadingIndicator v-if="loading && book" class="mb-3" label="Updating book details…" small/>
             <section v-if="error" class="alert alert-danger" role="alert">
                 {{ error }}
             </section>
             <!-- Book information -->
 
-            <div v-if="book" class="row g-4" :aria-busy="loading">
+            <div v-if="book" :aria-busy="loading" class="row g-4">
                 <section class="col-12 col-lg-8 book-details__information">
                     <div class="row g-3 align-items-start">
                         <!-- Book cover -->
@@ -277,10 +315,10 @@ onUnmounted(() => {
                                 :alt="`Cover of ${book.title}`"
                                 :src="optimizedCoverUrl(book.cover_url)"
                                 :srcset="optimizedCoverSrcset(book.cover_url)"
-                                sizes="(max-width: 767px) 177px, 275px"
-                                loading="eager"
-                                decoding="async"
                                 class="rounded book-details__cover img-fluid"
+                                decoding="async"
+                                loading="eager"
+                                sizes="(max-width: 767px) 177px, 275px"
                             />
                         </div>
                         <!-- Book metadata -->
@@ -333,9 +371,24 @@ onUnmounted(() => {
                         >
                             {{ bookContent.headline }}
                         </p>
-                        <p v-if="bookContent.description">
+                        <p
+                            v-if="bookContent.description"
+                            id="book-details-description-text"
+                            ref="descriptionElement"
+                            :class="{ 'book-details__description--collapsed': !descriptionExpanded }"
+                        >
                             {{ bookContent.description }}
                         </p>
+                        <button
+                            v-if="isMobileDescription && (descriptionOverflows || descriptionExpanded)"
+                            :aria-expanded="descriptionExpanded"
+                            aria-controls="book-details-description-text"
+                            class="btn btn-link ps-0"
+                            type="button"
+                            @click="descriptionExpanded = !descriptionExpanded"
+                        >
+                            {{ descriptionExpanded ? "Read less" : "Read more" }}
+                        </button>
                         <p
                             v-if="
                                 !bookContent.headline &&
@@ -374,55 +427,60 @@ onUnmounted(() => {
                         <section class="card book-details__formats">
                             <div class="card-body">
                                 <h2 class="card-title h6">Format</h2>
-                                <LoadingIndicator v-if="formatsFetching" label="Loading owned formats…" small class="mb-2" />
+                                <LoadingIndicator v-if="formatsFetching"
+                                    class="mb-2"
+                                    label="Loading owned formats…"
+                                    small/>
                                 <div class="d-flex flex-wrap gap-2">
                                     <button
-                                        :disabled="formatsLoading || formatsFetching"
                                         :aria-busy="pendingFormat === 'physical'"
                                         :class="
                                             ownedFormats.includes('physical')
                                                 ? 'btn-primary'
                                                 : 'btn-outline-primary'
                                         "
+                                        :disabled="formatsLoading || formatsFetching"
                                         class="btn btn-sm"
                                         type="button"
                                         @click="toggleFormat('physical')"
                                     >
-                                        <ButtonSpinner v-if="pendingFormat === 'physical'" />
+                                        <ButtonSpinner v-if="pendingFormat === 'physical'"/>
                                         Physical
                                     </button>
                                     <button
-                                        :disabled="formatsLoading || formatsFetching"
                                         :aria-busy="pendingFormat === 'ebook'"
                                         :class="
                                             ownedFormats.includes('ebook')
                                                 ? 'btn-primary'
                                                 : 'btn-outline-primary'
                                         "
+                                        :disabled="formatsLoading || formatsFetching"
                                         class="btn btn-sm"
                                         type="button"
                                         @click="toggleFormat('ebook')"
                                     >
-                                        <ButtonSpinner v-if="pendingFormat === 'ebook'" />
+                                        <ButtonSpinner v-if="pendingFormat === 'ebook'"/>
                                         E-book
                                     </button>
                                     <button
-                                        :disabled="formatsLoading || formatsFetching"
                                         :aria-busy="pendingFormat === 'audiobook'"
                                         :class="
                                             ownedFormats.includes('audiobook')
                                                 ? 'btn-primary'
                                                 : 'btn-outline-primary'
                                         "
+                                        :disabled="formatsLoading || formatsFetching"
                                         class="btn btn-sm"
                                         type="button"
                                         @click="toggleFormat('audiobook')"
                                     >
-                                        <ButtonSpinner v-if="pendingFormat === 'audiobook'" />
+                                        <ButtonSpinner v-if="pendingFormat === 'audiobook'"/>
                                         Audiobook
                                     </button>
                                 </div>
-                                <p v-if="formatsError" class="text-danger small mt-2 mb-0" role="alert">{{ formatsError }}</p>
+                                <p v-if="formatsError" class="text-danger small mt-2 mb-0" role="alert">{{
+                                        formatsError
+                                    }}</p>
                             </div>
                         </section>
                         <!-- Reading status -->
@@ -439,7 +497,10 @@ onUnmounted(() => {
                         <section class="card book-details__history">
                             <div class="card-body">
                                 <h2 class="card-title h6">Reading History</h2>
-                                <LoadingIndicator v-if="sessionsLoading" label="Loading reading history…" small class="mb-2" />
+                                <LoadingIndicator v-if="sessionsLoading"
+                                    class="mb-2"
+                                    label="Loading reading history…"
+                                    small/>
                                 <p
                                     v-if="sessionsError"
                                     class="py-2 alert alert-danger"
@@ -490,8 +551,8 @@ onUnmounted(() => {
                                         >
                                         </div>
                                         <button
-                                            class="ps-0 btn btn-link btn-sm"
                                             :disabled="sessionSaving || deletingSessionIds.includes(session.id)"
+                                            class="ps-0 btn btn-link btn-sm"
                                             @click="
                                                 editingSession = session;
                                                 formOpen = true;
@@ -500,12 +561,12 @@ onUnmounted(() => {
                                             Edit
                                         </button>
                                         <button
-                                            class="btn btn-link btn-sm text-danger"
-                                            :disabled="deletingSessionIds.includes(session.id) || (sessionSaving && editingSession?.id === session.id)"
                                             :aria-busy="deletingSessionIds.includes(session.id)"
+                                            :disabled="deletingSessionIds.includes(session.id) || (sessionSaving && editingSession?.id === session.id)"
+                                            class="btn btn-link btn-sm text-danger"
                                             @click="removeSession(session)"
                                         >
-                                            <ButtonSpinner v-if="deletingSessionIds.includes(session.id)" />
+                                            <ButtonSpinner v-if="deletingSessionIds.includes(session.id)"/>
                                             Delete
                                         </button>
                                     </article>
@@ -550,5 +611,15 @@ onUnmounted(() => {
 .book-details__headline,
 .book-details__description p {
     white-space: pre-line;
+}
+
+@media (max-width: 767.98px) {
+    .book-details__description--collapsed {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+    }
 }
 </style>
