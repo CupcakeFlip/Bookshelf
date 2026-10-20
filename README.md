@@ -16,6 +16,8 @@ npm run dev
 
 `npm run dev` starter Docker-miljøet og Vue/Vite samtidig. Frontend findes på http://localhost:5173, PHP/Apache på http://localhost:8000, og phpMyAdmin på http://localhost:8080.
 
+Bogforsider konverteres ved første visning til WebP med PHP GD (JPEG, PNG og WebP understøttes). Efter ændringer i PHP Dockerfile skal PHP-imaget bygges igen med `docker compose up -d --build php`. Originale forside-URL'er bevares i databasen. Kildebilleder og 320/640/960 px-varianter gemmes i den separate Docker-volume `cover_cache`, som overlever container-rebuilds. For at rydde cachen kan filerne under `/var/cache/bookshelf/covers` slettes i PHP-containeren; de oprettes igen ved næste billedrequest. Slet ikke MariaDB-volumen for at rydde billedcachen.
+
 Docker-kommandoer:
 
 ```powershell

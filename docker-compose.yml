@@ -9,6 +9,7 @@ services:
       - "${PHP_PORT:-8000}:80"
     volumes:
       - ./backend:/var/www/html
+      - cover_cache:/var/cache/bookshelf/covers
     environment:
       DB_HOST: mariadb
       DB_PORT: 3306
@@ -65,6 +66,7 @@ services:
 
 volumes:
   mariadb_data:
+  cover_cache:
 
 networks:
   bookshelf:

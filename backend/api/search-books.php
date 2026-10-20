@@ -219,17 +219,20 @@ function normalizeBook(mixed $book, ?array $details = null): array
 }
 
 /**
- * Fetches description and genre details for one Hardcover book.
+ * Fetches description and genre details for the search results in one request.
  *
- * @param int $bookId Hardcover book identifier.
+ * @param array $bookIds Hardcover book identifiers.
  * @param string $token Hardcover API token.
- * @return array|null Detail data, or null when the request fails.
+ * @return array Detail data indexed by Hardcover ID, or empty on failure.
  */
-function fetchBookDetails(int $bookId, string $token): ?array
+function fetchBookDetails(array $bookIds, string $token): array
 {
+    if ($bookIds === []) {
+        return [];
+    }
     $graphql = <<<'GRAPHQL'
-query BookDetail($id: Int!) {
-  books_by_pk(id: $id) {
+query BookDetails($ids: [Int!]!) {
+  books(where: {id: {_in: $ids}}) {
     id
     headline
     description
@@ -246,7 +249,7 @@ GRAPHQL;
             CURLOPT_POSTFIELDS => json_encode(
                 [
                     'query' => $graphql,
-                    'variables' => ['id' => $bookId],
+                    'variables' => ['ids' => $bookIds],
                 ]
             ),
             CURLOPT_RETURNTRANSFER => true,
@@ -265,17 +268,21 @@ GRAPHQL;
 
 
     if ($responseBody === false || $httpStatus < 200 || $httpStatus >= 300) {
-        return null;
+        return [];
     }
 
     $response = json_decode($responseBody, true);
     if (!is_array($response) || isset($response['errors'])) {
-        return null;
+        return [];
     }
 
-    return is_array($response['data']['books_by_pk'] ?? null)
-        ? $response['data']['books_by_pk']
-        : null;
+    $details = [];
+    foreach ($response['data']['books'] ?? [] as $book) {
+        if (is_array($book) && isset($book['id'])) {
+            $details[(int)$book['id']] = $book;
+        }
+    }
+    return $details;
 }
 
 // Validate the incoming search term before the API call.
@@ -369,11 +376,19 @@ if (!empty($search['error'])) {
 $searchResults = is_array($search['results'] ?? null) ? $search['results'] : [];
 $hits = is_array($searchResults['hits'] ?? null) ? $searchResults['hits'] : [];
 $normalizedBooks = [];
+$bookIds = [];
+foreach ($hits as $hit) {
+    $id = $hit['document']['id'] ?? null;
+    if (is_numeric($id)) {
+        $bookIds[] = (int)$id;
+    }
+}
+$detailsById = fetchBookDetails(array_values(array_unique($bookIds)), $token);
 
 foreach ($hits as $hit) {
     $book = is_array($hit['document'] ?? null) ? $hit['document'] : null;
     $bookId = is_array($book) && is_numeric($book['id'] ?? null) ? (int)$book['id'] : null;
-    $details = $bookId === null ? null : fetchBookDetails($bookId, $token);
+    $details = $bookId === null ? null : ($detailsById[$bookId] ?? null);
     $normalizedBooks[] = normalizeBook($hit, $details);
 }
 
