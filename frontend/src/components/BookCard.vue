@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { formatAuthors } from "@/utils/bookFormatting";
 import { bookText } from "@/utils/bookText";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
+import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
 
 const isFlipped = ref(false);
 const isMenuOpen = ref(false);
@@ -62,7 +63,9 @@ const text = computed(() => bookText(props.book));
                     <img
                         v-if="cover_url"
                         :alt="'Cover for ' + book.title"
-                        :src="cover_url"
+                        :src="optimizedCoverUrl(cover_url)"
+                        :srcset="optimizedCoverSrcset(cover_url)"
+                        sizes="(max-width: 767px) 163px, 298px"
                         :loading="coverLoading"
                         decoding="async"
                         class="book-cover"

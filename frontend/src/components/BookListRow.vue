@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
 
 const props = defineProps({ list: { type: Object, required: true } });
 const router = useRouter();
@@ -36,7 +37,11 @@ const preview = computed(
                 <img
                     v-if="book.cover_url"
                     :alt="`Cover for ${book.title}`"
-                    :src="book.cover_url"
+                    :src="optimizedCoverUrl(book.cover_url)"
+                    :srcset="optimizedCoverSrcset(book.cover_url)"
+                    sizes="(max-width: 575px) 56px, 80px"
+                    loading="lazy"
+                    decoding="async"
                 />
                 <span v-else aria-hidden="true">No cover</span>
             </span>

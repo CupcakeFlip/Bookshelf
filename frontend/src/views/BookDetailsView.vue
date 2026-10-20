@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import {computed, onMounted, onUnmounted, ref} from "vue";
+import {useRoute} from "vue-router";
 
 import {
     createReadingSession,
@@ -14,7 +14,8 @@ import {
 import Navbar from "@/components/Navbar.vue";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
-import { bookText } from "@/utils/bookText";
+import {bookText} from "@/utils/bookText";
+import {optimizedCoverUrl, optimizedCoverSrcset} from "@/utils/coverImages";
 
 const route = useRoute();
 //const isOwned = ref(false);
@@ -75,7 +76,7 @@ function dateLabel(value, precision) {
     if (precision === "month")
         return new Date(`${year}-${month}-01T00:00:00`).toLocaleDateString(
             undefined,
-            { month: "short", year: "numeric" },
+            {month: "short", year: "numeric"},
         );
     return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
         day: "numeric",
@@ -123,7 +124,7 @@ async function saveSession(session) {
         formOpen.value = false;
         editingSession.value = null;
         if (saved.status === book.value.status) return;
-        book.value = { ...book.value, status: saved.status };
+        book.value = {...book.value, status: saved.status};
     } catch (err) {
         sessionsError.value = err.message;
     }
@@ -172,7 +173,7 @@ async function toggleFormat(format) {
 }
 
 /** Merges the child status event into the current detail record. */
-async function handleStatusChange({ book: updatedBook, status }) {
+async function handleStatusChange({book: updatedBook, status}) {
     book.value = {
         ...book.value,
         ...updatedBook,
@@ -193,7 +194,7 @@ onUnmounted(() =>
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
 
     <main class="container-xl py-4 book-details">
         <div class="wrapper">
@@ -210,16 +211,20 @@ onUnmounted(() =>
                 <section class="col-12 col-lg-8 book-details__information">
                     <div class="row g-3 align-items-start">
                         <!-- Book cover -->
-                        <div class="col-4 col-sm-3">
+                        <div class="col-6 col-sm-4 col-md-4">
                             <img
                                 v-if="book.cover_url"
                                 :alt="`Cover of ${book.title}`"
-                                :src="book.cover_url"
+                                :src="optimizedCoverUrl(book.cover_url)"
+                                :srcset="optimizedCoverSrcset(book.cover_url)"
+                                sizes="(max-width: 767px) 177px, 275px"
+                                loading="eager"
+                                decoding="async"
                                 class="rounded book-details__cover img-fluid"
                             />
                         </div>
                         <!-- Book metadata -->
-                        <div class="col-8 col-sm-9">
+                        <div class="col-6 col-sm-8 col-md-8">
                             <div class="d-flex flex-column gap-2">
                                 <p
                                     v-if="book.series"
@@ -258,7 +263,7 @@ onUnmounted(() =>
                             </div>
                         </div>
                     </div>
-                    <hr class="my-4" />
+                    <hr class="my-4"/>
                     <!-- Description -->
                     <article class="book-details__description">
                         <h2 class="h5">Description</h2>
@@ -391,31 +396,31 @@ onUnmounted(() =>
                                             class="d-flex gap-2 justify-content-between"
                                         >
                                             <strong
-                                                >Read #{{
+                                            >Read #{{
                                                     sessions.length - index
                                                 }}
                                                 — {{ session.status }}</strong
                                             ><span
-                                                class="text-body-secondary small"
-                                                >{{ dateRange(session) }}</span
-                                            >
+                                            class="text-body-secondary small"
+                                        >{{ dateRange(session) }}</span
+                                        >
                                         </div>
                                         <div class="text-body-secondary small">
                                             <span
                                                 v-if="progressLabel(session)"
-                                                >{{
+                                            >{{
                                                     progressLabel(session)
                                                 }}</span
                                             ><span
-                                                v-if="session.formats?.length"
-                                                >{{
-                                                    progressLabel(session)
-                                                        ? " · "
-                                                        : ""
-                                                }}{{
-                                                    session.formats.join(", ")
-                                                }}</span
-                                            >
+                                            v-if="session.formats?.length"
+                                        >{{
+                                                progressLabel(session)
+                                                    ? " · "
+                                                    : ""
+                                            }}{{
+                                                session.formats.join(", ")
+                                            }}</span
+                                        >
                                         </div>
                                         <button
                                             class="ps-0 btn btn-link btn-sm"
