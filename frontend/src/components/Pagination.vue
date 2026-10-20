@@ -25,7 +25,10 @@ function go(page) {
 </script>
 
 <template>
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 my-4">
+    <div
+        :class="showPageSize ? 'justify-content-between' : 'justify-content-center'"
+        class="d-flex flex-wrap align-items-center gap-3 my-4"
+    >
         <div v-if="showPageSize" class="d-flex align-items-center gap-2">
             <label for="books-page-size">Books per page</label>
             <select

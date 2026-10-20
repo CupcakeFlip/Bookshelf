@@ -1,10 +1,10 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import Navbar from "@/components/Navbar.vue";
 import BookGrid from "@/components/BookGrid.vue";
 import Pagination from "@/components/Pagination.vue";
-import { searchHardcoverBooks, searchLocalBooks } from "@/api/books";
-import { filterBooksByGenre, getGenreOptions } from "@/utils/bookFormatting";
+import {searchHardcoverBooks, searchLocalBooks} from "@/api/books";
+import {filterBooksByGenre, getGenreOptions} from "@/utils/bookFormatting";
 
 const query = ref("");
 const genre = ref("");
@@ -33,7 +33,7 @@ function mergeBooks(localBooks, hardcoverBooks) {
 }
 
 /** Updates the visible book after BookCard persists a status change. */
-function updateBook({ book }) {
+function updateBook({book}) {
     const id = String(book.hardcover_id);
     const replace = (list) =>
         list.map((item) => (String(item.hardcover_id) === id ? book : item));
@@ -110,7 +110,9 @@ onMounted(() => {
     fetchPopularBooks();
     window.addEventListener("bookshelf:books-synced", refreshPopularBooks);
 });
-const refreshPopularBooks = () => { if (showingPopular.value) fetchPopularBooks(); };
+const refreshPopularBooks = () => {
+    if (showingPopular.value) fetchPopularBooks();
+};
 onUnmounted(() =>
     window.removeEventListener("bookshelf:books-synced", refreshPopularBooks),
 );
@@ -122,14 +124,14 @@ const filteredBooks = computed(() =>
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
     <main class="container py-4">
         <div class="mb-4">
             <h1 class="mb-3">Catalogue</h1>
             <form class="row g-3" @submit.prevent="searchBooks">
                 <div class="col-md-8">
                     <label class="visually-hidden" for="catalogue-search"
-                        >Search books</label
+                    >Search books</label
                     >
                     <input
                         id="catalogue-search"
@@ -142,7 +144,7 @@ const filteredBooks = computed(() =>
                 </div>
                 <div class="col-md-4">
                     <label class="visually-hidden" for="genre-filter"
-                        >Filter by genre</label
+                    >Filter by genre</label
                     >
                     <select
                         id="genre-filter"
@@ -200,7 +202,10 @@ const filteredBooks = computed(() =>
                 :books="filteredBooks"
                 @status-change="updateBook"
             />
-            <Pagination v-if="showingPopular && !message" :page="popularPage" :has-next="popularHasNext" @page-change="fetchPopularBooks" />
+            <Pagination v-if="showingPopular && !message"
+                :has-next="popularHasNext"
+                :page="popularPage"
+                @page-change="fetchPopularBooks"/>
         </div>
     </main>
 </template>
