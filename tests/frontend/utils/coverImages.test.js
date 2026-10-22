@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "./coverImages";
+import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
 
 describe("optimized cover URLs", () => {
     const original = "https://assets.hardcover.app/covers/book.jpg?token=a&size=large";

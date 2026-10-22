@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createSSRApp, h } from "vue";
 import { renderToString } from "vue/server-renderer";
-import BookGridSkeleton from "./BookGridSkeleton.vue";
-import BookDetailsSkeleton from "./BookDetailsSkeleton.vue";
-import ListRowsSkeleton from "./ListRowsSkeleton.vue";
-import LoadingIndicator from "./LoadingIndicator.vue";
-import ButtonSpinner from "./ButtonSpinner.vue";
-import ReadingSessionForm from "./ReadingSessionForm.vue";
-import BookCollectionContent from "./BookCollectionContent.vue";
-import gridSource from "./BookGridSkeleton.vue?raw";
-import detailsSource from "./BookDetailsSkeleton.vue?raw";
-import rowsSource from "./ListRowsSkeleton.vue?raw";
+import BookGridSkeleton from "@/components/BookGridSkeleton.vue";
+import BookDetailsSkeleton from "@/components/BookDetailsSkeleton.vue";
+import ListRowsSkeleton from "@/components/ListRowsSkeleton.vue";
+import LoadingIndicator from "@/components/LoadingIndicator.vue";
+import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
+import BookCollectionContent from "@/components/BookCollectionContent.vue";
+import gridSource from "@/components/BookGridSkeleton.vue?raw";
+import detailsSource from "@/components/BookDetailsSkeleton.vue?raw";
+import rowsSource from "@/components/ListRowsSkeleton.vue?raw";
 
 const render = (component, props = {}) => {
     const app = createSSRApp({ render: () => h(component, props) });

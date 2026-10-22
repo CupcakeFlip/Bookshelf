@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLatestRequest } from "./latestRequest";
+import { createLatestRequest } from "@/utils/latestRequest";
 
 describe("latest request guard", () => {
     it("aborts the previous request and rejects its late result", () => {

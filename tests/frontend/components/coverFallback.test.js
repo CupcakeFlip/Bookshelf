@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp, h, nextTick, reactive } from "vue";
-import BookCard from "./BookCard.vue";
+import BookCard from "@/components/BookCard.vue";
 import { fallbackCoverImage, optimizedCoverSrcset, optimizedCoverUrl } from "@/utils/coverImages";
 
 const original = "https://assets.hardcover.app/covers/book.jpg?token=a&size=large";

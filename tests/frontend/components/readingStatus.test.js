@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, h, nextTick, reactive } from "vue";
-import BookStatusDropdown from "./BookStatusDropdown.vue";
-import ReadingSessionForm from "./ReadingSessionForm.vue";
-import BookCard from "./BookCard.vue";
-import dropdownSource from "./BookStatusDropdown.vue?raw";
-import formSource from "./ReadingSessionForm.vue?raw";
-import dialogSource from "./ReadingStatusDialog.vue?raw";
+import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
+import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
+import BookCard from "@/components/BookCard.vue";
+import dropdownSource from "@/components/BookStatusDropdown.vue?raw";
+import formSource from "@/components/ReadingSessionForm.vue?raw";
+import dialogSource from "@/components/ReadingStatusDialog.vue?raw";
 import { getReadingSessions, removeBookStatus, saveBookStatus } from "@/api/books";
 
 vi.mock("@/api/books", () => ({

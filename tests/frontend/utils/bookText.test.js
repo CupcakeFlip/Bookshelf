@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookText } from "./bookText";
+import { bookText } from "@/utils/bookText";
 
 describe("bookText", () => {
     it("keeps headline and description separate", () =>

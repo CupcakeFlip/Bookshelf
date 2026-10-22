@@ -6,7 +6,7 @@ import {
     getGenreOptions,
     normalizeGenre,
     normalizeGenres,
-} from "./bookFormatting";
+} from "@/utils/bookFormatting";
 
 describe("formatAuthors", () => {
     it.each([

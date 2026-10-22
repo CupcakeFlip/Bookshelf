@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createSSRApp } from "vue";
 import { renderToString } from "vue/server-renderer";
-import Pagination from "./Pagination.vue";
+import Pagination from "@/components/Pagination.vue";
 
 const render = (props) => renderToString(createSSRApp(Pagination, props));
 
