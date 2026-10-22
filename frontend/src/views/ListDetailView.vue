@@ -7,6 +7,9 @@ import BookCollectionFilters from "@/components/BookCollectionFilters.vue";
 import Pagination from "@/components/Pagination.vue";
 import {getSavedPageLimit, savePageLimit} from "@/utils/pagination";
 import {createLatestRequest} from "@/utils/latestRequest";
+import {scrollToCollection} from "@/utils/collectionScroll";
+
+const collectionElement = ref(null);
 
 const route = useRoute(),
     names = {
@@ -33,7 +36,7 @@ const route = useRoute(),
     });
 const requests = createLatestRequest();
 
-async function fetchBooks() {
+async function fetchBooks(scroll = false) {
     requests.abort();
     if (!title.value) {
         books.value = [];
@@ -41,6 +44,7 @@ async function fetchBooks() {
         return;
     }
     const request = requests.start();
+    let loaded = false;
     loading.value = true;
     error.value = "";
     try {
@@ -65,6 +69,7 @@ async function fetchBooks() {
         page.value = d.page;
         loadedPage.value = d.page;
         totalPages.value = d.totalPages;
+        loaded = true;
     } catch (e) {
         if (requests.isCurrent(request) && e.name !== "AbortError") {
             error.value = e.message;
@@ -72,6 +77,9 @@ async function fetchBooks() {
         }
     } finally {
         if (requests.isCurrent(request)) loading.value = false;
+    }
+    if (loaded && scroll) {
+        await scrollToCollection(collectionElement.value, () => requests.isCurrent(request));
     }
 }
 
@@ -83,14 +91,14 @@ function changeFilters(next) {
 
 function changePage(next) {
     page.value = next;
-    fetchBooks();
+    fetchBooks(true);
 }
 
 function changeLimit(next) {
     limit.value = next;
     savePageLimit(next);
     page.value = 1;
-    fetchBooks();
+    fetchBooks(true);
 }
 
 const refreshBooks = () => fetchBooks();
@@ -132,12 +140,14 @@ onUnmounted(() => {
                 show-page-size
                 @page-change="changePage"
                 @limit-change="changeLimit"/>
-            <BookCollectionContent :books="books"
-                :error="error"
-                :loading="loading"
-                :skeleton-count="limit"
-                label="Reading list books"
-                @status-change="refreshBooks"/>
+            <div ref="collectionElement" class="book-collection">
+                <BookCollectionContent :books="books"
+                    :error="error"
+                    :loading="loading"
+                    :skeleton-count="limit"
+                    label="Reading list books"
+                    @status-change="refreshBooks"/>
+            </div>
             <Pagination v-if="totalPages > 1 && books.length"
                 :disabled="loading"
                 :page="page"

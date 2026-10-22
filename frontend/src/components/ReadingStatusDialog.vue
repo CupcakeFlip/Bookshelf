@@ -9,11 +9,14 @@ const props = defineProps({
     modelValue: Boolean,
     status: {type: String, default: "finished"},
     returnFocus: {type: Object, default: null},
+    saveSession: {type: Function, required: true},
 });
 const emit = defineEmits(["update:modelValue", "confirm", "cancel"]);
 const value = ref(null);
 const loading = ref(false);
 const error = ref("");
+const saving = ref(false);
+const saveError = ref("");
 const modal = ref(null);
 const titleId = useId();
 let requestNumber = 0;
@@ -117,16 +120,33 @@ async function open() {
 }
 
 function cancel() {
+    if (saving.value) return;
     ++requestNumber;
     loading.value = false;
     emit("cancel");
     emit("update:modelValue", false);
 }
 
-function confirm(session) {
-    ++requestNumber;
-    emit("confirm", session);
-    emit("update:modelValue", false);
+async function confirm(session) {
+    if (saving.value) return;
+    const request = requestNumber;
+    saving.value = true;
+    saveError.value = "";
+    try {
+        const saved = await props.saveSession(session);
+        if (request !== requestNumber || !props.modelValue) return;
+        if (saved === null) {
+            saving.value = false;
+            cancel();
+            return;
+        }
+        emit("confirm", saved);
+        emit("update:modelValue", false);
+    } catch (err) {
+        if (request === requestNumber) saveError.value = err.message;
+    } finally {
+        if (request === requestNumber) saving.value = false;
+    }
 }
 
 watch(
@@ -139,6 +159,8 @@ watch(
             ++requestNumber;
             loading.value = false;
             value.value = null;
+            saving.value = false;
+            saveError.value = "";
             deactivateDialog();
         }
     },
@@ -181,6 +203,7 @@ onBeforeUnmount(() => {
                             }}
                         </h2>
                         <button
+                            :disabled="saving"
                             aria-label="Close reading status dialog"
                             class="btn-close"
                             type="button"
@@ -197,9 +220,11 @@ onBeforeUnmount(() => {
                         <ReadingSessionForm
                             v-if="value"
                             :model-value="value"
+                            :saving="saving"
                             @cancel="cancel"
                             @save="confirm"
                         />
+                        <p v-if="saveError" class="alert alert-danger mt-3 mb-0" role="alert">{{ saveError }}</p>
                     </div>
                 </div>
             </div>

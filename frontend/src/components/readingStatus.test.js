@@ -113,7 +113,8 @@ describe("shared reading status controls", () => {
     it("keeps 44px touch targets on both pill buttons, menu options, and mobile form controls", async () => {
         const { host } = await mount(BookStatusDropdown, { book });
         expect(host.querySelectorAll(".btn-status")).toHaveLength(2);
-        expect(dropdownSource).toMatch(/\.btn-status,\s*\.dropdown-item\s*\{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
+        expect(dropdownSource).toMatch(/\.btn-status,\s*\.dropdown-item\s*\{[^}]*min-width: 44px;/);
+        expect(dropdownSource).toMatch(/@media[^}]*\.dropdown-item\s*\{[^}]*min-height: 44px;/);
         expect(formSource).toContain("(max-width: 767.98px), (pointer: coarse)");
         expect(formSource).toMatch(/\.reading-session-form \.btn,[\s\S]*\.form-select\s*\{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
         expect(dialogSource).toMatch(/\.btn-close\s*\{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
@@ -204,6 +205,14 @@ describe("shared reading status controls", () => {
             start_date: "2020-01-01", start_date_precision: "year", formats: ["ebook"],
         }));
         expect(host.querySelector(".btn-status").disabled).toBe(true);
+        expect(document.querySelector(".modal")).toBeTruthy();
+        expect(button("Saving…").disabled).toBe(true);
+        expect(button("Cancel").disabled).toBe(true);
+        await click(document.querySelector(".modal"));
+        key("Escape");
+        await submit();
+        expect(document.querySelector(".modal")).toBeTruthy();
+        expect(saveBookStatus).toHaveBeenCalledTimes(1);
         finish({ id: 1 });
         await flush();
         expect(host.querySelector(".btn-status").disabled).toBe(false);
@@ -231,15 +240,75 @@ describe("shared reading status controls", () => {
         expect(document.activeElement).toBe(host.querySelector(".btn-status"));
     });
 
-    it("shows save failures without changing status and allows retry", async () => {
+    it("keeps the modal and all edits after an API error, and closes only after a successful retry", async () => {
         saveBookStatus.mockRejectedValueOnce(new Error("Could not save"));
-        const { host } = await openStatus();
+        const { host } = await openStatus("Did not finish");
+        await setField("Started year", "2023");
+        await setField("Finished year", "2024");
+        await setField("Finished month", "2");
+        await setField("Finished day", "8");
+        await click(button("E-book"));
+        await setField("DNF progress type", "percentage");
+        await setField("DNF progress value", "37.5");
+        const form = document.querySelector("form");
         await submit();
-        expect(host.querySelector('[role="alert"]').textContent).toBe("Could not save");
+        expect(document.querySelector('.modal [role="alert"]').textContent).toBe("Could not save");
+        expect(document.querySelector("form")).toBe(form);
+        expect(document.querySelector('[aria-label="Started year"]').value).toBe("2023");
+        expect(document.querySelector('[aria-label="Finished day"]').value).toBe("8");
+        expect(document.querySelector('[aria-label="DNF progress value"]').value).toBe("37.5");
+        expect(button("E-book").classList.contains("btn-primary")).toBe(true);
         expect(host.querySelector(".btn-status").textContent.trim()).toBe("Reading");
-        expect(host.querySelector(".btn-status").disabled).toBe(false);
+        expect(button("Save").disabled).toBe(false);
+        const firstPayload = saveBookStatus.mock.calls[0][2];
+        await submit();
+        expect(saveBookStatus).toHaveBeenCalledTimes(2);
+        expect(saveBookStatus.mock.calls[1][2]).toEqual(firstPayload);
+        expect(document.querySelector(".modal")).toBeNull();
+    });
+
+    it("blocks a value without a type, keeps every field, and accepts a chosen type without erasing the value", async () => {
+        await openStatus("Did not finish");
+        await click(button("I don't know the finish date"));
+        await setField("Started year", "2020");
+        await click(button("Physical"));
+        await setField("DNF progress value", "25");
+        const form = document.querySelector("form");
+        await submit();
+        expect(document.querySelector('.modal [role="alert"]').textContent).toContain("Choose a progress type");
+        expect(document.querySelector("form")).toBe(form);
+        expect(saveBookStatus).not.toHaveBeenCalled();
+        await setField("DNF progress type", "percentage");
+        expect(document.querySelector('[aria-label="DNF progress value"]').value).toBe("25");
+        await submit();
+        expect(saveBookStatus).toHaveBeenCalledWith(book, "dnf", expect.objectContaining({
+            start_date: "2020-01-01", start_date_precision: "year", formats: ["physical"],
+            finish_date: null, finish_date_precision: "unknown", dnf_progress_type: "percentage", dnf_progress_value: 25,
+        }));
+        expect(document.querySelector(".modal")).toBeNull();
+    });
+
+    it("allows explicit cancellation after an API failure without another write", async () => {
+        saveBookStatus.mockRejectedValueOnce(new Error("Save failed"));
+        const { trigger } = await openStatus("Did not finish");
+        await submit();
+        expect(document.querySelector(".modal")).toBeTruthy();
+        await click(button("Cancel"));
+        expect(document.querySelector(".modal")).toBeNull();
+        expect(saveBookStatus).toHaveBeenCalledTimes(1);
+        expect(trigger.disabled).toBe(false);
+    });
+
+    it("preserves cancellation by beforeStatusChange without saving", async () => {
+        const beforeStatusChange = vi.fn(async () => null);
+        const { host } = await mount(BookStatusDropdown, { book, beforeStatusChange });
         await click(host.querySelector(".btn-status"));
-        expect(host.querySelector(".dropdown-menu")).toBeTruthy();
+        await click(button("Finished", host.querySelector(".dropdown-menu")));
+        await submit();
+        expect(beforeStatusChange).toHaveBeenCalledWith("finished", "reading");
+        expect(saveBookStatus).not.toHaveBeenCalled();
+        expect(document.querySelector(".modal")).toBeNull();
+        expect(host.querySelector(".btn-status").disabled).toBe(false);
     });
 });
 
@@ -271,5 +340,35 @@ describe("finish date form", () => {
             status: "dnf", formats: ["audiobook"], start_date: "2025-03-01", start_date_precision: "month",
             finish_date: null, finish_date_precision: "unknown", dnf_progress_type: "time", dnf_progress_value: 95,
         });
+    });
+});
+
+describe("DNF progress validation", () => {
+    it.each(["percentage", "page", "time"])("requires an explicit value for %s, including time", async (type) => {
+        const onSave = vi.fn();
+        await mount(ReadingSessionForm, { modelValue: { status: "dnf", formats: [] }, onSave });
+        await setField("DNF progress type", type);
+        await submit();
+        expect(onSave).not.toHaveBeenCalled();
+        expect(document.querySelector('[role="alert"]').textContent).toContain("Enter a progress value");
+    });
+
+    it.each([
+        ["percentage", 101, [], "between 0 and 100"],
+        ["page", 1.5, ["ebook"], "non-negative integer"],
+        ["page", 12, [], "physical or e-book"],
+    ])("blocks invalid %s/%s before emitting", async (type, value, formats, message) => {
+        const onSave = vi.fn();
+        await mount(ReadingSessionForm, { modelValue: { status: "dnf", formats, dnf_progress_type: type, dnf_progress_value: value }, onSave });
+        await submit();
+        expect(onSave).not.toHaveBeenCalled();
+        expect(document.querySelector('[role="alert"]').textContent).toContain(message);
+    });
+
+    it.each(["percentage", "page", "time"])("preserves explicit zero progress for %s", async (type) => {
+        const onSave = vi.fn();
+        await mount(ReadingSessionForm, { modelValue: { status: "dnf", formats: type === "page" ? ["physical"] : [], dnf_progress_type: type, dnf_progress_value: 0 }, onSave });
+        await submit();
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ dnf_progress_type: type, dnf_progress_value: 0 }));
     });
 });

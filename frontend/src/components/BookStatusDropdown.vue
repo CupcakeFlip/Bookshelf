@@ -96,25 +96,17 @@ async function selectStatus(status) {
     errorMessage.value = "";
     isMenuOpen.value = false;
     try {
-        let details = {};
+        let saved;
         if (status === "finished" || status === "dnf") {
             dialogStatus.value = status;
             finishedDialogOpen.value = true;
-            details = await new Promise((resolve) => {
+            saved = await new Promise((resolve) => {
                 finishedDetails.value = resolve;
             });
-            if (details === null) return;
-        }
-        if (props.beforeStatusChange) {
-            details = await props.beforeStatusChange(status, previous);
-            if (details === null) return;
-        }
+            if (saved === null) return;
+        } else saved = await persistStatus(status, previous);
         if (!active) return;
-        saving.value = true;
-        const saved =
-            status === null
-                ? await removeBookStatus(props.book)
-                : await saveBookStatus(props.book, status, details);
+        if (saved === null) return;
         if (active) emit("status-change", {
             book: {...props.book, ...saved, status},
             status,
@@ -131,6 +123,26 @@ async function selectStatus(status) {
             });
         }
     }
+}
+
+async function persistStatus(status, previous, details = {}) {
+    if (props.beforeStatusChange) {
+        details = await props.beforeStatusChange(status, previous);
+        if (details === null) return null;
+    }
+    if (!active) return null;
+    saving.value = true;
+    try {
+        return status === null
+            ? await removeBookStatus(props.book)
+            : await saveBookStatus(props.book, status, details);
+    } finally {
+        saving.value = false;
+    }
+}
+
+function saveDialogSession(session) {
+    return persistStatus(dialogStatus.value, currentStatus.value, session);
 }
 
 /**
@@ -232,6 +244,7 @@ watch(isMenuOpen, (isOpen) => {
             :book="book"
             :return-focus="statusButton"
             :status="dialogStatus"
+            :save-session="saveDialogSession"
             @cancel="finishedDetails?.(null)"
             @confirm="finishedDetails?.($event)"
         />
@@ -253,6 +266,13 @@ watch(isMenuOpen, (isOpen) => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+@media (max-width: 767.98px), (pointer: coarse) {
+    .btn-status,
+    .dropdown-item {
+        min-height: 44px;
+    }
 }
 
 .btn-not-in-library {

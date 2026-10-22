@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createSSRApp, h } from "vue";
 import { renderToString } from "vue/server-renderer";
 import BookCard from "./BookCard.vue";
+import source from "./BookCard.vue?raw";
 
 async function renderBook(book) {
     const app = createSSRApp({ render: () => h(BookCard, { book }) });
@@ -37,5 +38,16 @@ describe("BookCard description", () => {
         const headline = await renderBook({ ...base, headline: "Only headline" });
         expect(headline).toContain("Only headline");
         expect(headline).not.toContain("book-description");
+    });
+});
+
+describe("BookCard sizing", () => {
+    it("constrains intrinsic grid widths while preserving the flip and reserved 2:3 cover space", () => {
+        expect(source).toMatch(/\.book-card__inner\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
+        expect(source).toMatch(/\.book-card__front,\s*\.book-card__back\s*\{[^}]*min-width: 0/);
+        expect(source).toMatch(/\.book-card__cover-wrapper\s*\{[^}]*width: 100%;[^}]*aspect-ratio: 2 \/ 3/);
+        expect(source).toMatch(/\.book-cover\s*\{[^}]*position: absolute;[^}]*max-width: 100%/);
+        expect(source).toContain("transform-style: preserve-3d");
+        expect(source).toContain("transform: rotateY(180deg)");
     });
 });

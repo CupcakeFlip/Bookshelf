@@ -15,7 +15,13 @@ if (!is_string($url) || !trustedCoverUrl($url) || !in_array($width, COVER_WIDTHS
     exit;
 }
 $cacheDir = getenv('COVER_CACHE_DIR') ?: '/var/cache/bookshelf/covers';
-$path = optimizedCover($url, $width, $cacheDir);
+try {
+    $path = optimizedCover($url, $width, $cacheDir);
+} catch (Throwable $error) {
+    // Missing codecs or hosting limits must not turn an optional optimization into a broken cover.
+    error_log('Cover optimization failed: ' . $error->getMessage());
+    $path = null;
+}
 if ($path === null) {
     header('Cache-Control: no-store');
     header('Location: ' . $url, true, 302);

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, useId, watch } from "vue";
 
 const props = defineProps({
     modelValue: { type: Object, default: null },
@@ -48,6 +48,14 @@ const empty = () => ({
     progressMinutes: "",
 });
 const form = reactive(empty());
+const progressErrorId = useId();
+let previousProgressType = null;
+const hasValue = (value) => value !== "" && value !== null && value !== undefined;
+const progress = computed(() => {
+    if (form.dnf_progress_type !== "time") return form.dnf_progress_value;
+    if (!hasValue(form.progressHours) && !hasValue(form.progressMinutes)) return null;
+    return Number(form.progressHours || 0) * 60 + Number(form.progressMinutes || 0);
+});
 
 function splitDate(date, precision) {
     if (!date || precision === "unknown") return ["", "", ""];
@@ -73,6 +81,7 @@ function load(value) {
     );
     form.formats = [...(source.formats ?? [])];
     form.dnf_progress_type = source.dnf_progress_type ?? null;
+    previousProgressType = form.dnf_progress_type;
     form.dnf_progress_value = source.dnf_progress_value ?? null;
     if (
         source.dnf_progress_type === "time" &&
@@ -142,51 +151,50 @@ const error = computed(() => {
         finish.date < start.date
     )
         return "The finished date cannot be before the started date.";
-    if (
-        form.status === "dnf" &&
-        form.dnf_progress_type === "percentage" &&
-        (Number(form.dnf_progress_value) < 0 ||
-            Number(form.dnf_progress_value) > 100)
-    )
-        return "Percentage must be between 0 and 100.";
-    if (
-        form.status === "dnf" &&
-        form.dnf_progress_type === "page" &&
-        (!Number.isInteger(Number(form.dnf_progress_value)) ||
-            Number(form.dnf_progress_value) < 0)
-    )
-        return "Page progress must be a non-negative integer.";
-    if (
-        form.status === "dnf" &&
-        form.dnf_progress_type === "time" &&
-        (Number(form.progressHours) < 0 ||
-            Number(form.progressMinutes) < 0 ||
-            Number(form.progressMinutes) > 59)
-    )
-        return "Enter a valid time.";
     return "";
 });
 
-function clearProgress() {
-    form.dnf_progress_value = null;
-    form.progressHours = "";
-    form.progressMinutes = "";
+const progressError = computed(() => {
+    if (form.status !== "dnf") return "";
+    const type = form.dnf_progress_type;
+    if (!type && hasValue(progress.value)) return "Choose a progress type for the entered value.";
+    if (type && !hasValue(progress.value)) return "Enter a progress value or select None.";
+    if (!type) return "";
+    if (!Number.isFinite(Number(progress.value)) || Number(progress.value) < 0)
+        return "Progress must be a non-negative number.";
+    if (type === "percentage" && Number(progress.value) > 100)
+        return "Percentage must be between 0 and 100.";
+    if (type === "page" && !Number.isInteger(Number(progress.value)))
+        return "Page progress must be a non-negative integer.";
+    if (type === "time" && (
+        !Number.isInteger(Number(form.progressHours || 0)) || Number(form.progressHours) < 0 ||
+        !Number.isInteger(Number(form.progressMinutes || 0)) || Number(form.progressMinutes) < 0 ||
+        Number(form.progressMinutes) > 59
+    )) return "Enter a valid time in whole hours and minutes.";
+    if (type === "page" && !form.formats.some((format) => ["physical", "ebook"].includes(format)))
+        return "Page progress requires a physical or e-book format.";
+    if (type === "time" && form.formats.length && !form.formats.includes("audiobook"))
+        return "Time progress requires an audiobook format.";
+    return "";
+});
+
+function changeProgressType() {
+    // Retain a value entered before its unit; changing an existing unit clears it.
+    if (previousProgressType !== null || form.dnf_progress_type === "time") {
+        form.dnf_progress_value = null;
+        form.progressHours = "";
+        form.progressMinutes = "";
+    }
+    previousProgressType = form.dnf_progress_type;
 }
 
 function save() {
-    if (error.value || props.saving) return;
+    if (error.value || progressError.value || props.saving) return;
     const start = dateData("start"),
         finish = dateData("finish");
-    const progress =
-        form.dnf_progress_type === "time"
-            ? Number(form.progressHours || 0) * 60 +
-              Number(form.progressMinutes || 0)
-            : form.dnf_progress_value;
     const hasProgress =
         form.status === "dnf" &&
-        progress !== "" &&
-        progress !== null &&
-        progress !== undefined;
+        hasValue(progress.value);
     emit("save", {
         status: form.status,
         formats: [...form.formats],
@@ -195,7 +203,7 @@ function save() {
         finish_date: finish.date,
         finish_date_precision: finish.precision,
         dnf_progress_type: hasProgress ? form.dnf_progress_type : null,
-        dnf_progress_value: hasProgress ? progress : null,
+        dnf_progress_value: hasProgress ? Number(progress.value) : null,
     });
 }
 
@@ -314,7 +322,10 @@ function clearFinishDate() {
                 <select
                     v-model="form.dnf_progress_type"
                     class="form-select"
-                    @change="clearProgress"
+                    aria-label="DNF progress type"
+                    :aria-invalid="!!progressError"
+                    :aria-describedby="progressError ? progressErrorId : undefined"
+                    @change="changeProgressType"
                 >
                     <option :value="null">None</option>
                     <option value="percentage">Percentage</option>
@@ -331,6 +342,10 @@ function clearFinishDate() {
                     class="form-control"
                     min="0"
                     type="number"
+                    step="any"
+                    aria-label="DNF progress value"
+                    :aria-invalid="!!progressError"
+                    :aria-describedby="progressError ? progressErrorId : undefined"
                 />
                 <template v-else
                     ><input
@@ -338,15 +353,22 @@ function clearFinishDate() {
                         class="form-control"
                         min="0"
                         placeholder="Hours"
+                        aria-label="DNF progress hours"
+                        :aria-invalid="!!progressError"
+                        :aria-describedby="progressError ? progressErrorId : undefined"
                         type="number" /><input
                         v-model="form.progressMinutes"
                         class="form-control"
                         max="59"
                         min="0"
                         placeholder="Minutes"
+                        aria-label="DNF progress minutes"
+                        :aria-invalid="!!progressError"
+                        :aria-describedby="progressError ? progressErrorId : undefined"
                         type="number"
                 /></template>
             </div>
+            <p v-if="progressError" :id="progressErrorId" class="text-danger mt-2 mb-0" role="alert">{{ progressError }}</p>
         </div>
         <p v-if="error" class="py-2 mb-0 alert alert-danger">{{ error }}</p>
         <div class="d-flex gap-2 justify-content-end">
