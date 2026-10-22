@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createSSRApp, h } from "vue";
 import { renderToString } from "vue/server-renderer";
-import BookCard from "./BookCard.vue";
-import source from "./BookCard.vue?raw";
+import BookCard from "@/components/BookCard.vue";
+import source from "@/components/BookCard.vue?raw";
 
 async function renderBook(book) {
     const app = createSSRApp({ render: () => h(BookCard, { book }) });

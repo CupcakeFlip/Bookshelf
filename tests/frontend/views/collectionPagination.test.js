@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, h, nextTick } from "vue";
-import LibraryView from "./LibraryView.vue";
-import ListDetailView from "./ListDetailView.vue";
-import Frontpage from "./Frontpage.vue";
+import LibraryView from "@/views/LibraryView.vue";
+import ListDetailView from "@/views/ListDetailView.vue";
+import Frontpage from "@/views/Frontpage.vue";
 import { scrollToCollection } from "@/utils/collectionScroll";
 
 vi.mock("vue-router", () => ({ useRoute: () => ({ params: { status: "reading" } }) }));

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../lib/cover_images.php';
+require_once __DIR__ . '/../../backend/lib/cover_images.php';
 
 function check(bool $condition, string $message): void
 {

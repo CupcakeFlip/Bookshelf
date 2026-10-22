@@ -12,6 +12,15 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    test: {
+        root: fileURLToPath(new URL('..', import.meta.url)),
+        include: ['tests/frontend/**/*.test.js'],
+        // Resolve Vue from the frontend installation for tests outside frontend/.
+        alias: {
+            'vue': fileURLToPath(new URL('./node_modules/vue', import.meta.url)),
+            'vue-router': fileURLToPath(new URL('./node_modules/vue-router', import.meta.url)),
+        },
+    },
     server: {
         // During local development, forward browser API calls to Apache/PHP.
         proxy: {

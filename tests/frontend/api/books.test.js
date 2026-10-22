@@ -4,7 +4,7 @@ import {
     saveBookStatus,
     updateReadingSession,
     searchLocalBooks,
-} from "./books";
+} from "@/api/books";
 
 afterEach(() => vi.restoreAllMocks());
 
