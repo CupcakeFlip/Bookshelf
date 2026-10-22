@@ -6,9 +6,9 @@ import Navbar from "@/components/Navbar.vue";
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
     <main>
-        <h1>To be made soon</h1>
+        <h1 class="text-center">To be made soon</h1>
     </main>
 </template>
 

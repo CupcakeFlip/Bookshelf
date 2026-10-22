@@ -21,7 +21,7 @@ export default defineConfig({
             }
         }
     },
-    base: './',
+    base: '/',
     preview: {
         proxy: {
             '/api': {

@@ -19,10 +19,23 @@ const nextEnabled = computed(() =>
     props.totalPages === null ? props.hasNext : props.page < props.totalPages,
 );
 
+
 function go(page) {
-    if (!props.disabled && page >= 1 && (props.totalPages === null || page <= props.totalPages))
-        emit("page-change", page);
+    if (
+        props.disabled ||
+        page < 1 ||
+        page === props.page ||
+        (props.totalPages !== null && page > props.totalPages)
+    ) return;
+
+    emit("page-change", page);
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
 }
+
 </script>
 
 <template>
@@ -34,8 +47,8 @@ function go(page) {
             <label for="books-page-size">Books per page</label>
             <select
                 id="books-page-size"
-                :value="limit"
                 :disabled="disabled"
+                :value="limit"
                 class="form-select form-select-sm w-auto"
                 @change="emit('limit-change', Number($event.target.value))"
             >
@@ -45,7 +58,8 @@ function go(page) {
         <nav aria-label="Book pages">
             <ul class="pagination mb-0 flex-wrap">
                 <li :class="{ disabled: disabled || page <= 1 }" class="page-item">
-                    <button :disabled="disabled || page <= 1" class="page-link" type="button" @click="go(page - 1)">Previous
+                    <button :disabled="disabled || page <= 1" class="page-link" type="button" @click="go(page - 1)">
+                        Previous
                     </button>
                 </li>
                 <li v-for="number in pages" :key="number" :class="{ active: number === page }" class="page-item">
@@ -61,7 +75,9 @@ function go(page) {
                     <span aria-current="page" class="page-link">Page {{ page }}</span>
                 </li>
                 <li :class="{ disabled: disabled || !nextEnabled }" class="page-item">
-                    <button :disabled="disabled || !nextEnabled" class="page-link" type="button" @click="go(page + 1)">Next</button>
+                    <button :disabled="disabled || !nextEnabled" class="page-link" type="button" @click="go(page + 1)">
+                        Next
+                    </button>
                 </li>
             </ul>
         </nav>

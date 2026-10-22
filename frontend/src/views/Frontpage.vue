@@ -132,7 +132,7 @@ const filteredBooks = computed(() =>
 
 <template>
     <Navbar/>
-    <main class="container py-4">
+    <main class="container-xl py-4">
         <div class="mb-4">
             <h1 class="mb-3">Catalogue</h1>
             <form class="row g-3" @submit.prevent="searchBooks">
@@ -184,7 +184,10 @@ const filteredBooks = computed(() =>
                 </div>
             </form>
         </div>
-        <LoadingIndicator v-if="loading && books.length" :label="showingPopular ? 'Loading popular books…' : 'Searching books…'" small class="mb-3" />
+        <LoadingIndicator v-if="loading && books.length"
+            :label="showingPopular ? 'Loading popular books…' : 'Searching books…'"
+            class="mb-3"
+            small/>
         <div :aria-busy="loading" aria-label="Catalogue books">
             <p v-if="partialError" class="alert alert-warning" role="status">
                 {{ partialError }}
@@ -194,7 +197,7 @@ const filteredBooks = computed(() =>
             </p>
             <template v-if="loading && !books.length">
                 <span class="visually-hidden" role="status">Loading catalogue books…</span>
-                <BookGridSkeleton :count="24" />
+                <BookGridSkeleton :count="24"/>
             </template>
             <p
                 v-else-if="!loading && !message && query.trim() && !filteredBooks.length"
@@ -208,9 +211,9 @@ const filteredBooks = computed(() =>
                 @status-change="updateBook"
             />
             <Pagination v-if="showingPopular && (books.length || !loading)"
+                :disabled="loading"
                 :has-next="popularHasNext"
                 :page="popularPage"
-                :disabled="loading"
                 @page-change="fetchPopularBooks"/>
         </div>
     </main>
