@@ -31,11 +31,13 @@ const BOOK_GENRE_CATEGORIES = [
     'Historical' => [
         'Historical',
         'Historical Romance',
-        'Historical Fiction'
+        'Historical Fiction',
+        'History'
     ],
     'Fantasy' => [
         'Fantasy',
         'Fantasy Romance',
+        'Fantasy romance',
         'Romantasy',
         'Epic Fantasy',
         'Urban Fantasy',
@@ -43,11 +45,17 @@ const BOOK_GENRE_CATEGORIES = [
         'High Fantasy',
         'Paranormal Fantasy',
         'Science Fiction & Fantasy',
-        'Romance|science Fiction & Fantasy'
+        'Science Fiction and Fantasy',
+        'Fantasy & Science Fiction',
+        'Fantasy and Science Fiction ',
+        'Romance|science Fiction & Fantasy',
+        'Magic',
+        'dragons'
     ],
     'Romance' => [
         'Romance',
         'Fantasy Romance',
+        'Fantasy romance',
         'Romantasy',
         'Dark Romance',
         'Contemporary Romance',
@@ -57,7 +65,18 @@ const BOOK_GENRE_CATEGORIES = [
     ],
     'Science Fiction' => [
         'Science Fiction & Fantasy',
+        'Science Fiction and Fantasy',
+        'Fantasy & Science Fiction',
+        'Fantasy and Science Fiction ',
         'Romance|science Fiction & Fantasy'
+    ],
+    'Action' => [
+        'Action',
+        'Action & Adventure'
+    ],
+    'Adventure' => [
+        'Adventure',
+        'Action & Adventure'
     ],
 ];
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { formatAuthors } from "@/utils/bookFormatting";
 import { bookText } from "@/utils/bookText";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
@@ -48,6 +48,25 @@ const seriesText = computed(() =>
 );
 
 const text = computed(() => bookText(props.book));
+const descriptionBox = ref(null);
+const descriptionOverflow = ref(false);
+let descriptionObserver;
+
+function measureDescription() {
+    const box = descriptionBox.value;
+    if (box) descriptionOverflow.value = box.scrollHeight > box.clientHeight + 1;
+}
+
+watch(descriptionBox, (box) => {
+    descriptionObserver?.disconnect();
+    if (box && typeof ResizeObserver !== "undefined") {
+        descriptionObserver = new ResizeObserver(measureDescription);
+        descriptionObserver.observe(box);
+    }
+    nextTick(measureDescription);
+});
+watch(text, () => nextTick(measureDescription));
+onBeforeUnmount(() => descriptionObserver?.disconnect());
 </script>
 
 <template>
@@ -116,14 +135,16 @@ const text = computed(() => bookText(props.book));
 
                     <hr />
 
+                    <p v-if="text.headline" class="mb-2 book-meta book-headline">
+                        {{ text.headline }}
+                    </p>
                     <div
-                        v-if="text.headline || text.description"
+                        v-if="text.description"
+                        ref="descriptionBox"
+                        :class="{ 'book-description--overflow': descriptionOverflow }"
                         class="mb-2 book-meta book-description"
                     >
-                        <p v-if="text.headline" class="mb-2 book-headline">
-                            {{ text.headline }}
-                        </p>
-                        <p v-if="text.description" class="mb-0">
+                        <p class="mb-0">
                             {{ text.description }}
                         </p>
                     </div>
@@ -216,6 +237,7 @@ h3 {
 
 .book-card__inner {
     display: grid;
+    position: relative;
     transition: transform 0.6s;
     transform-style: preserve-3d;
 }
@@ -239,6 +261,9 @@ h3 {
 }
 
 .book-card__back {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
     transform: rotateY(180deg);
 }
 
@@ -268,6 +293,24 @@ h3 {
     padding: 1rem;
 }
 
+.book-card__back .book-card__content {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.book-card__back .book-title,
+.book-card__back .book-authors,
+.book-card__back .book-seriesText,
+.book-card__back .book-headline,
+.book-card__back hr {
+    flex-shrink: 0;
+}
+
+.book-card__back .btn {
+    flex: none;
+    margin-top: auto;
+}
+
 .book-card__actions {
     padding: 0 1rem 1rem;
 }
@@ -279,13 +322,15 @@ h3 {
 }
 
 .book-description {
-    display: -webkit-box;
+    min-height: 0;
+    flex: 1 1 auto;
     overflow: hidden;
     white-space: pre-line;
     color: var(--bs-light);
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 12;
-    line-clamp: 12;
+}
+
+.book-description--overflow {
+    mask-image: linear-gradient(to bottom, black calc(100% - 1.5em), transparent);
 }
 
 .book-headline {
