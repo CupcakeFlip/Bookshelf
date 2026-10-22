@@ -208,12 +208,18 @@ function toggleFormat(value) {
 function clearDay(prefix) {
     if (!form[`${prefix}Month`]) form[`${prefix}Day`] = "";
 }
+
+function clearFinishDate() {
+    form.finishYear = "";
+    form.finishMonth = "";
+    form.finishDay = "";
+}
 </script>
 <template>
-    <form class="vstack gap-3" @submit.prevent="save">
+    <form class="reading-session-form vstack gap-3" @submit.prevent="save">
         <div>
             <label class="form-label">Status</label
-            ><select v-model="form.status" class="form-select">
+            ><select v-model="form.status" class="form-select" aria-label="Reading status">
                 <option
                     v-for="item in statuses"
                     :key="item.value"
@@ -235,12 +241,14 @@ function clearDay(prefix) {
                         inputmode="numeric"
                         maxlength="4"
                         placeholder="Year"
+                        :aria-label="`${prefix === 'start' ? 'Started' : 'Finished'} year`"
                     />
                 </div>
                 <div class="col-4">
                     <select
                         v-model="form[`${prefix}Month`]"
                         class="form-select"
+                        :aria-label="`${prefix === 'start' ? 'Started' : 'Finished'} month`"
                         @change="clearDay(prefix)"
                     >
                         <option value="">Month</option>
@@ -258,6 +266,7 @@ function clearDay(prefix) {
                         v-model="form[`${prefix}Day`]"
                         :disabled="!form[`${prefix}Month`]"
                         class="form-select"
+                        :aria-label="`${prefix === 'start' ? 'Started' : 'Finished'} day`"
                     >
                         <option value="">Day</option>
                         <option
@@ -270,6 +279,15 @@ function clearDay(prefix) {
                     </select>
                 </div>
             </div>
+            <button
+                v-if="prefix === 'finish' && ['finished', 'dnf'].includes(form.status)"
+                class="btn btn-sm btn-outline-secondary mt-2"
+                type="button"
+                :disabled="saving"
+                @click="clearFinishDate"
+            >
+                I don't know the finish date
+            </button>
         </div>
         <div>
             <label class="form-label">Format</label>
@@ -347,3 +365,14 @@ function clearDay(prefix) {
         </div>
     </form>
 </template>
+
+<style scoped>
+@media (max-width: 767.98px), (pointer: coarse) {
+    .reading-session-form .btn,
+    .reading-session-form .form-control,
+    .reading-session-form .form-select {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+</style>

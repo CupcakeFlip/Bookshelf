@@ -90,21 +90,26 @@ onUnmounted(() => {
 </script>
 <template>
     <Navbar/>
-    <main class="container-xl px-4 py-4">
+    <main class="container-xl py-4">
         <h1 class="mb-4">My Library</h1>
         <BookCollectionFilters @change="changeFilters"/>
-        <Pagination :limit="limit"
+        <Pagination :disabled="loading"
+            :limit="limit"
             :page="page"
             :total-pages="totalPages"
-            :disabled="loading"
             show-page-size
             @page-change="changePage"
             @limit-change="changeLimit"/>
-        <BookCollectionContent :books="books" :loading="loading" :error="error" :skeleton-count="limit" label="Library books" @status-change="updateBook" />
+        <BookCollectionContent :books="books"
+            :error="error"
+            :loading="loading"
+            :skeleton-count="limit"
+            label="Library books"
+            @status-change="updateBook"/>
         <Pagination v-if="totalPages > 1 && books.length"
+            :disabled="loading"
             :page="page"
             :total-pages="totalPages"
-            :disabled="loading"
             @page-change="changePage"/>
     </main>
 </template>

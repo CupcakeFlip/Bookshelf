@@ -118,25 +118,30 @@ onUnmounted(() => {
 </script>
 <template>
     <Navbar/>
-    <main class="container py-4">
+    <main class="container-xl py-4">
         <h1 v-if="title" class="mb-4">{{ title }}</h1>
         <p v-if="!title" class="alert alert-danger">
             This reading list does not exist.
         </p>
         <template v-else>
             <BookCollectionFilters :status="status" @change="changeFilters"/>
-            <Pagination :limit="limit"
+            <Pagination :disabled="loading"
+                :limit="limit"
                 :page="page"
                 :total-pages="totalPages"
-                :disabled="loading"
                 show-page-size
                 @page-change="changePage"
                 @limit-change="changeLimit"/>
-            <BookCollectionContent :books="books" :loading="loading" :error="error" :skeleton-count="limit" label="Reading list books" @status-change="refreshBooks" />
+            <BookCollectionContent :books="books"
+                :error="error"
+                :loading="loading"
+                :skeleton-count="limit"
+                label="Reading list books"
+                @status-change="refreshBooks"/>
             <Pagination v-if="totalPages > 1 && books.length"
+                :disabled="loading"
                 :page="page"
                 :total-pages="totalPages"
-                :disabled="loading"
                 @page-change="changePage"/>
         </template>
     </main>
