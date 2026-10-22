@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { removeBookStatus, saveBookStatus } from "@/api/books";
+import {computed, nextTick, onMounted, onUnmounted, ref, useId, watch} from "vue";
+import {removeBookStatus, saveBookStatus} from "@/api/books";
 import ReadingStatusDialog from "@/components/ReadingStatusDialog.vue";
 import ButtonSpinner from "@/components/ButtonSpinner.vue";
 
 const dropdownElement = ref(null);
+const statusButton = ref(null);
+const menuId = useId();
 const pending = ref(false);
 const saving = ref(false);
 const isMenuOpen = ref(false);
@@ -15,12 +17,12 @@ const dialogStatus = ref("finished");
 let active = true;
 
 const statusOptions = [
-    { value: null, label: "Not in library" },
-    { value: "want_to_read", label: "Want to read" },
-    { value: "reading", label: "Reading" },
-    { value: "finished", label: "Finished" },
-    { value: "paused", label: "Paused" },
-    { value: "dnf", label: "Did not finish" },
+    {value: null, label: "Not in library"},
+    {value: "want_to_read", label: "Want to read"},
+    {value: "reading", label: "Reading"},
+    {value: "finished", label: "Finished"},
+    {value: "paused", label: "Paused"},
+    {value: "dnf", label: "Did not finish"},
 ];
 
 /**
@@ -31,8 +33,8 @@ const statusOptions = [
 
 /** @type {{book: BookStatusData}} */
 const props = defineProps({
-    book: { type: Object, required: true },
-    beforeStatusChange: { type: Function, default: null },
+    book: {type: Object, required: true},
+    beforeStatusChange: {type: Function, default: null},
 });
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["status-change", "menu-toggle"]);
@@ -114,7 +116,7 @@ async function selectStatus(status) {
                 ? await removeBookStatus(props.book)
                 : await saveBookStatus(props.book, status, details);
         if (active) emit("status-change", {
-            book: { ...props.book, ...saved, status },
+            book: {...props.book, ...saved, status},
             status,
             previous,
         });
@@ -123,16 +125,22 @@ async function selectStatus(status) {
     } finally {
         saving.value = false;
         pending.value = false;
+        if (status === "finished" || status === "dnf") {
+            nextTick(() => {
+                if (document.activeElement === document.body) statusButton.value?.focus();
+            });
+        }
     }
 }
 
 /**
- * Uses the primary status button as a shortcut for adding an untracked book.
+ * Adds an untracked book, or toggles the menu for a book already in the library.
  *
  * @returns {void}
  */
 function mainStatusAction() {
     if (currentStatus.value === null) selectStatus("want_to_read");
+    else isMenuOpen.value = !isMenuOpen.value;
 }
 
 /**
@@ -179,17 +187,21 @@ watch(isMenuOpen, (isOpen) => {
     <div ref="dropdownElement" class="dropdown" @click.stop>
         <div class="btn-group w-100 h-100" role="group">
             <button
+                ref="statusButton"
+                :aria-busy="saving"
+                :aria-controls="currentStatus === null ? undefined : menuId"
+                :aria-expanded="currentStatus === null ? undefined : isMenuOpen"
                 :class="statusButtonClass"
                 :disabled="pending"
-                :aria-busy="saving"
                 class="btn btn-sm"
                 type="button"
                 @click="mainStatusAction"
             >
-                <ButtonSpinner v-if="saving" />
+                <ButtonSpinner v-if="saving"/>
                 {{ statusLabel }}
             </button>
             <button
+                :aria-controls="menuId"
                 :aria-expanded="isMenuOpen"
                 :class="statusButtonClass"
                 :disabled="pending"
@@ -200,7 +212,7 @@ watch(isMenuOpen, (isOpen) => {
                 <span class="visually-hidden">Toggle reading status</span>
             </button>
         </div>
-        <ul v-if="isMenuOpen" class="dropdown-menu show">
+        <ul v-if="isMenuOpen" :id="menuId" class="dropdown-menu show">
             <li v-for="option in statusOptions" :key="option.value">
                 <button
                     :class="{ active: currentStatus === option.value }"
@@ -218,6 +230,7 @@ watch(isMenuOpen, (isOpen) => {
         <ReadingStatusDialog
             v-model="finishedDialogOpen"
             :book="book"
+            :return-focus="statusButton"
             :status="dialogStatus"
             @cancel="finishedDetails?.(null)"
             @confirm="finishedDetails?.($event)"
@@ -228,6 +241,18 @@ watch(isMenuOpen, (isOpen) => {
 <style lang="scss" scoped>
 .dropdown-menu {
     z-index: 1060;
+}
+
+.btn-status,
+.dropdown-item {
+    min-width: 44px;
+    min-height: 24px;
+}
+
+.btn-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-not-in-library {
