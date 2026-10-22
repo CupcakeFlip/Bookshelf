@@ -24,3 +24,14 @@ export function optimizedCoverSrcset(original) {
     if (!original || optimizedCoverUrl(original) === original) return "";
     return widths.map((width) => `${optimizedCoverUrl(original, width)} ${width}w`).join(", ");
 }
+
+/** Retry an optimized cover once at its original URL, including srcset failures. */
+export function fallbackCoverImage(event, original) {
+    const image = event.currentTarget;
+    if (!image || !original || optimizedCoverUrl(original) === original) return;
+    if (image.getAttribute("src") === original && !image.hasAttribute("srcset")) return;
+    // Clear candidates first so the browser cannot select another failed variant.
+    image.removeAttribute("srcset");
+    image.removeAttribute("sizes");
+    image.setAttribute("src", original);
+}

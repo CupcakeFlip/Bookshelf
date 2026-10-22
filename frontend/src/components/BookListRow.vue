@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
+import { fallbackCoverImage, optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
 
 const props = defineProps({ list: { type: Object, required: true } });
 const router = useRouter();
@@ -42,6 +42,7 @@ const preview = computed(
                     sizes="(max-width: 575px) 56px, 80px"
                     loading="lazy"
                     decoding="async"
+                    @error="fallbackCoverImage($event, book.cover_url)"
                 />
                 <span v-else aria-hidden="true">No cover</span>
             </span>

@@ -29,11 +29,6 @@ function go(page) {
     ) return;
 
     emit("page-change", page);
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
 }
 
 </script>

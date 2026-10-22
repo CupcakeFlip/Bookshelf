@@ -517,6 +517,12 @@ hr {
 // Book-specific components
 // -------------------------------------------------
 
+.book-collection {
+    // Replaced page contents must not become the browser's scroll anchor.
+    overflow-anchor: none;
+    scroll-margin-top: 1rem;
+}
+
 .book-card {
     overflow: hidden;
     transition:

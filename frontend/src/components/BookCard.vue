@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { formatAuthors } from "@/utils/bookFormatting";
 import { bookText } from "@/utils/bookText";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
+import { fallbackCoverImage, optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
 
 const isFlipped = ref(false);
 const isMenuOpen = ref(false);
@@ -84,10 +84,13 @@ onBeforeUnmount(() => descriptionObserver?.disconnect());
                         :alt="'Cover for ' + book.title"
                         :src="optimizedCoverUrl(cover_url)"
                         :srcset="optimizedCoverSrcset(cover_url)"
-                        sizes="(max-width: 767px) 163px, 298px"
+                        sizes="(min-width: 1400px) 306px, (min-width: 1200px) 261px, (min-width: 992px) calc(25vw - 24px), (min-width: 768px) calc(33.333vw - 19px), calc(50vw - 20px)"
                         :loading="coverLoading"
                         decoding="async"
                         class="book-cover"
+                        width="320"
+                        height="480"
+                        @error="fallbackCoverImage($event, cover_url)"
                     />
                     <div
                         v-else
@@ -205,6 +208,8 @@ h3 {
     // Let the status menu escape the card while the cover keeps its own clipping.
     flex-direction: column;
     perspective: 1000px;
+    width: 100%;
+    min-width: 0;
 
     .dropdown,
     .btn-group {
@@ -237,6 +242,8 @@ h3 {
 
 .book-card__inner {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     position: relative;
     transition: transform 0.6s;
     transform-style: preserve-3d;
@@ -252,6 +259,7 @@ h3 {
     flex-direction: column;
     width: 100%;
     grid-area: 1 / 1;
+    min-width: 0;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
 }
@@ -268,12 +276,20 @@ h3 {
 }
 
 .book-card__cover-wrapper {
+    position: relative;
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
     overflow: hidden;
     aspect-ratio: 2 / 3;
 }
 
 .book-cover {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
+    max-width: 100%;
     height: 100%;
     object-fit: cover;
 }
@@ -291,6 +307,8 @@ h3 {
     flex: 1;
     flex-direction: column;
     padding: 1rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .book-card__back .book-card__content {

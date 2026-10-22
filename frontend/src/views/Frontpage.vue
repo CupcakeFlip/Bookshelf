@@ -7,6 +7,9 @@ import BookGridSkeleton from "@/components/BookGridSkeleton.vue";
 import LoadingIndicator from "@/components/LoadingIndicator.vue";
 import {searchHardcoverBooks, searchLocalBooks} from "@/api/books";
 import {filterBooksByGenre, getGenreOptions} from "@/utils/bookFormatting";
+import {scrollToCollection} from "@/utils/collectionScroll";
+
+const collectionElement = ref(null);
 
 const query = ref("");
 const genre = ref("");
@@ -43,8 +46,9 @@ function updateBook({book}) {
     popularBooks.value = replace(popularBooks.value);
 }
 
-async function fetchPopularBooks(page = popularPage.value) {
+async function fetchPopularBooks(page = popularPage.value, scroll = false) {
     const requestNumber = ++searchNumber;
+    let loaded = false;
     const previousPage = popularPage.value;
     showingPopular.value = true;
     loading.value = true;
@@ -59,6 +63,7 @@ async function fetchPopularBooks(page = popularPage.value) {
         popularHasNext.value = payload.hasNext;
         books.value = popularBooks.value;
         message.value = "";
+        loaded = true;
     } catch (error) {
         if (requestNumber === searchNumber) {
             popularPage.value = previousPage;
@@ -67,6 +72,13 @@ async function fetchPopularBooks(page = popularPage.value) {
     } finally {
         if (requestNumber === searchNumber) loading.value = false;
     }
+    if (loaded && scroll) {
+        await scrollToCollection(collectionElement.value, () => requestNumber === searchNumber);
+    }
+}
+
+function changePopularPage(page) {
+    fetchPopularBooks(page, true);
 }
 
 /** Searches both sources and ignores responses from an older submitted query. */
@@ -188,7 +200,7 @@ const filteredBooks = computed(() =>
             :label="showingPopular ? 'Loading popular books…' : 'Searching books…'"
             class="mb-3"
             small/>
-        <div :aria-busy="loading" aria-label="Catalogue books">
+        <div ref="collectionElement" :aria-busy="loading" aria-label="Catalogue books" class="book-collection">
             <p v-if="partialError" class="alert alert-warning" role="status">
                 {{ partialError }}
             </p>
@@ -214,7 +226,7 @@ const filteredBooks = computed(() =>
                 :disabled="loading"
                 :has-next="popularHasNext"
                 :page="popularPage"
-                @page-change="fetchPopularBooks"/>
+                @page-change="changePopularPage"/>
         </div>
     </main>
 </template>

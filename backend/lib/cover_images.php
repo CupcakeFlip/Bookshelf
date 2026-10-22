@@ -35,6 +35,9 @@ function coverImageInfo(string $bytes): ?array
 
 function downloadCover(string $url): ?string
 {
+    if (!function_exists('curl_init') || !function_exists('dns_get_record')) {
+        return null;
+    }
     $host = 'assets.hardcover.app';
     $records = dns_get_record($host, DNS_A | DNS_AAAA);
     $addresses = [];
@@ -83,11 +86,11 @@ function validCoverVariant(string $path, int $width): bool
 
 function writeCoverFile(string $path, string $bytes): bool
 {
-    $temporary = tempnam(dirname($path), 'cover-');
+    $temporary = @tempnam(dirname($path), 'cover-');
     if ($temporary === false) {
         return false;
     }
-    $ok = file_put_contents($temporary, $bytes) === strlen($bytes) && rename($temporary, $path);
+    $ok = @file_put_contents($temporary, $bytes) === strlen($bytes) && @rename($temporary, $path);
     if (!$ok) {
         @unlink($temporary);
     }
@@ -96,19 +99,21 @@ function writeCoverFile(string $path, string $bytes): bool
 
 function optimizedCover(string $url, int $width, string $cacheDir, ?callable $downloader = null): ?string
 {
-    if (!trustedCoverUrl($url) || !in_array($width, COVER_WIDTHS, true) || !extension_loaded('gd')) {
+    if (!trustedCoverUrl($url) || !in_array($width, COVER_WIDTHS, true)
+        || !extension_loaded('gd') || !function_exists('imagewebp')
+        || !(imagetypes() & IMG_WEBP)) {
         return null;
     }
     $key = hash('sha256', $url);
     $directory = rtrim($cacheDir, '/\\') . DIRECTORY_SEPARATOR . substr($key, 0, 2);
-    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+    if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
         return null;
     }
     $variant = $directory . DIRECTORY_SEPARATOR . $key . '-' . $width . '.webp';
     if (validCoverVariant($variant, $width)) {
         return $variant;
     }
-    $lock = fopen($directory . DIRECTORY_SEPARATOR . $key . '.lock', 'c');
+    $lock = @fopen($directory . DIRECTORY_SEPARATOR . $key . '.lock', 'c');
     if (!$lock || !flock($lock, LOCK_EX)) {
         if ($lock) fclose($lock);
         return null;
@@ -118,7 +123,7 @@ function optimizedCover(string $url, int $width, string $cacheDir, ?callable $do
             return $variant;
         }
         $source = $directory . DIRECTORY_SEPARATOR . $key . '.source';
-        $bytes = is_file($source) && filesize($source) <= COVER_MAX_BYTES ? file_get_contents($source) : false;
+        $bytes = is_file($source) && filesize($source) <= COVER_MAX_BYTES ? @file_get_contents($source) : false;
         $info = is_string($bytes) ? coverImageInfo($bytes) : null;
         if (!$info) {
             $bytes = ($downloader ?? 'downloadCover')($url);
@@ -142,13 +147,13 @@ function optimizedCover(string $url, int $width, string $cacheDir, ?callable $do
         imagesavealpha($resized, true);
         imagecopyresampled($resized, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $info[0], $info[1]);
         imagedestroy($image);
-        $temporary = tempnam($directory, 'cover-');
+        $temporary = @tempnam($directory, 'cover-');
         if ($temporary === false) {
             imagedestroy($resized);
             return null;
         }
-        $ok = imagewebp($resized, $temporary, 82) && validCoverVariant($temporary, $width)
-            && rename($temporary, $variant);
+        $ok = @imagewebp($resized, $temporary, 82) && validCoverVariant($temporary, $width)
+            && @rename($temporary, $variant);
         imagedestroy($resized);
         if (!$ok) {
             @unlink($temporary);

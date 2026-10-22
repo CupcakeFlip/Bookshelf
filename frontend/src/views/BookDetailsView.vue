@@ -1,6 +1,6 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
+import {useRoute} from "vue-router";
 
 import {
     createReadingSession,
@@ -17,8 +17,8 @@ import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
 import BookDetailsSkeleton from "@/components/BookDetailsSkeleton.vue";
 import LoadingIndicator from "@/components/LoadingIndicator.vue";
 import ButtonSpinner from "@/components/ButtonSpinner.vue";
-import { bookText } from "@/utils/bookText";
-import { optimizedCoverSrcset, optimizedCoverUrl } from "@/utils/coverImages";
+import {bookText} from "@/utils/bookText";
+import {fallbackCoverImage, optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
 
 const route = useRoute();
 //const isOwned = ref(false);
@@ -140,7 +140,7 @@ function dateLabel(value, precision) {
     if (precision === "month")
         return new Date(`${year}-${month}-01T00:00:00`).toLocaleDateString(
             undefined,
-            { month: "short", year: "numeric" },
+            {month: "short", year: "numeric"},
         );
     return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
         day: "numeric",
@@ -192,7 +192,7 @@ async function saveSession(session) {
         formOpen.value = false;
         editingSession.value = null;
         if (saved.status === book.value.status) return;
-        book.value = { ...book.value, status: saved.status };
+        book.value = {...book.value, status: saved.status};
     } catch (err) {
         if (book.value?.id === targetBookId) sessionsError.value = err.message;
     } finally {
@@ -261,7 +261,7 @@ async function toggleFormat(format) {
 }
 
 /** Merges the child status event into the current detail record. */
-async function handleStatusChange({ book: updatedBook, status }) {
+async function handleStatusChange({book: updatedBook, status}) {
     book.value = {
         ...book.value,
         ...updatedBook,
@@ -303,7 +303,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
 
     <main class="container-xl py-4 book-details">
         <div class="wrapper">
@@ -313,9 +313,9 @@ onUnmounted(() => {
                 aria-label="Book details"
             >
                 <span class="visually-hidden" role="status"
-                    >Loading book details…</span
+                >Loading book details…</span
                 >
-                <BookDetailsSkeleton />
+                <BookDetailsSkeleton/>
             </section>
 
             <LoadingIndicator
@@ -343,6 +343,7 @@ onUnmounted(() => {
                                 decoding="async"
                                 loading="eager"
                                 sizes="(max-width: 767px) 177px, 275px"
+                                @error="fallbackCoverImage($event, book.cover_url)"
                             />
                         </div>
                         <!-- Book metadata -->
@@ -385,7 +386,7 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-                    <hr class="my-4" />
+                    <hr class="my-4"/>
                     <!-- Description -->
                     <article class="book-details__description">
                         <h2 class="h5 visually-hidden">Description</h2>
@@ -587,31 +588,31 @@ onUnmounted(() => {
                                             class="d-flex gap-2 justify-content-between"
                                         >
                                             <strong
-                                                >Read #{{
+                                            >Read #{{
                                                     sessions.length - index
                                                 }}
                                                 — {{ session.status }}</strong
                                             ><span
-                                                class="text-body-secondary small"
-                                                >{{ dateRange(session) }}</span
-                                            >
+                                            class="text-body-secondary small"
+                                        >{{ dateRange(session) }}</span
+                                        >
                                         </div>
                                         <div class="text-body-secondary small">
                                             <span
                                                 v-if="progressLabel(session)"
-                                                >{{
+                                            >{{
                                                     progressLabel(session)
                                                 }}</span
                                             ><span
-                                                v-if="session.formats?.length"
-                                                >{{
-                                                    progressLabel(session)
-                                                        ? " · "
-                                                        : ""
-                                                }}{{
-                                                    session.formats.join(", ")
-                                                }}</span
-                                            >
+                                            v-if="session.formats?.length"
+                                        >{{
+                                                progressLabel(session)
+                                                    ? " · "
+                                                    : ""
+                                            }}{{
+                                                session.formats.join(", ")
+                                            }}</span
+                                        >
                                         </div>
                                         <button
                                             :disabled="
@@ -696,6 +697,12 @@ onUnmounted(() => {
 .book-details__headline,
 .book-details__description p {
     white-space: pre-line;
+}
+
+.book-details__cover {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 @media (max-width: 767.98px) {

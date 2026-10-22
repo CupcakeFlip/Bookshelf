@@ -18,15 +18,15 @@ describe("Pagination", () => {
     it("disables invalid navigation with a known total", async () => {
         const first = await render({ page: 1, totalPages: 2 });
         const last = await render({ page: 2, totalPages: 2 });
-        expect(first).toMatch(/disabled[^>]*>Previous/);
-        expect(last).toMatch(/disabled[^>]*>Next/);
+        expect(first).toMatch(/<button[^>]*disabled[^>]*>\s*Previous\s*</);
+        expect(last).toMatch(/<button[^>]*disabled[^>]*>\s*Next\s*</);
     });
 
     it("uses only Previous and Next for unknown totals", async () => {
         const html = await render({ page: 3, hasNext: true });
         expect(html).toContain("Page 3");
         expect(html).not.toContain('aria-label="Page 3"');
-        expect(html).not.toMatch(/disabled[^>]*>Next/);
+        expect(html).not.toMatch(/<button[^>]*disabled[^>]*>\s*Next\s*</);
     });
 
     it("disables navigation and page size during a page request", async () => {
