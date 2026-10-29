@@ -1,3 +1,10 @@
+<!-- Made with AI -->
+
+<!--
+    Displays five placeholder rows while the reading-lists overview loads.
+    Resembles the list titles and cover previews so the page can show its
+    expected layout before the API response arrives.
+-->
 <template>
     <div class="d-grid gap-3" aria-hidden="true">
         <div v-for="number in 5" :key="number" class="card p-3 d-flex flex-row align-items-center gap-3">

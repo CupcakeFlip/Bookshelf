@@ -1,3 +1,10 @@
+<!-- Made with AI -->
+
+<!--
+    Shows a visual placeholder while the book details page first loads.
+    Matches the cover, text, and management panels to keep the loading layout
+    familiar without displaying incomplete book information.
+-->
 <template>
     <div class="row g-4" aria-hidden="true">
         <div class="col-12 col-lg-8">

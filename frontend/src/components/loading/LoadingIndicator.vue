@@ -1,3 +1,10 @@
+<!-- Made with AI -->
+
+<!--
+    Displays a spinner with a readable status message for pending requests.
+    Lets pages and dialogs share the same loading feedback while choosing
+    a label that describes the current action.
+-->
 <script setup>
 defineProps({ label: { type: String, default: "Loading books…" }, small: Boolean });
 </script>

@@ -1,3 +1,10 @@
+<!-- Made with AI -->
+
+<!--
+    Displays a configurable number of placeholder book cards during initial loading.
+    Follows the BookGrid layout so collection pages can indicate pending content
+    without showing incomplete books.
+-->
 <script setup>
 defineProps({ count: { type: Number, default: 24 } });
 </script>
