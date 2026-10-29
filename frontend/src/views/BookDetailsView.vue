@@ -1,7 +1,9 @@
+<!--
+    Coordinates the page for a book selected through its Hardcover ID.
+    Loads metadata, manages owned formats and reading history through the PHP API,
+    and combines shared status and session controls with the book description.
+-->
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
-
 import {
     createReadingSession,
     deleteReadingSession,
@@ -10,18 +12,19 @@ import {
     updateOwnedFormats,
     updateReadingSession,
 } from "@/api/books";
+import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
+import BookDetailsSkeleton from "@/components/loading/BookDetailsSkeleton.vue";
+import ButtonSpinner from "@/components/loading/ButtonSpinner.vue";
+import LoadingIndicator from "@/components/loading/LoadingIndicator.vue";
 
 import Navbar from "@/components/Navbar.vue";
-import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
 import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
-import BookDetailsSkeleton from "@/components/BookDetailsSkeleton.vue";
-import LoadingIndicator from "@/components/LoadingIndicator.vue";
-import ButtonSpinner from "@/components/ButtonSpinner.vue";
-import { bookText } from "@/utils/bookText";
-import { optimizedCoverSrcset, optimizedCoverUrl } from "@/utils/coverImages";
+import {bookText} from "@/utils/bookText";
+import {fallbackCoverImage, optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
+import {useRoute} from "vue-router";
 
 const route = useRoute();
-//const isOwned = ref(false);
 
 const book = ref(null);
 const loading = ref(true);
@@ -71,7 +74,11 @@ watch(bookContent, () => nextTick(measureDescription));
 let detailsRequest = 0;
 let sessionsRequest = 0;
 
-/** Loads the normalized local or external representation for the route book. */
+/**
+ * Loads details for the route, then local ownership and reading history.
+ * The request counter prevents an older route response from replacing the current book.
+ * @returns {Promise<void>} Failures are displayed in the view.
+ */
 async function fetchBook() {
     const request = ++detailsRequest;
     loading.value = true;
@@ -87,22 +94,27 @@ async function fetchBook() {
         }
 
         const details = await response.json();
-        if (request !== detailsRequest) return;
+        if (request !== detailsRequest) {
+            return;
+        }
         book.value = details;
         if (details.id) {
             formatsFetching.value = true;
             getOwnedFormats(details.id)
                 .then((formats) => {
-                    if (request === detailsRequest)
+                    if (request === detailsRequest) {
                         ownedFormats.value = formats;
+                    }
                 })
                 .catch((err) => {
-                    if (request === detailsRequest)
+                    if (request === detailsRequest) {
                         formatsError.value = err.message;
+                    }
                 })
                 .finally(() => {
-                    if (request === detailsRequest)
+                    if (request === detailsRequest) {
                         formatsFetching.value = false;
+                    }
                 });
             await loadSessions(details);
         } else {
@@ -112,36 +124,64 @@ async function fetchBook() {
             sessionsLoading.value = false;
         }
     } catch (err) {
-        if (request === detailsRequest) error.value = err.message;
+        if (request === detailsRequest) {
+            error.value = err.message;
+        }
     } finally {
-        if (request === detailsRequest) loading.value = false;
+        if (request === detailsRequest) {
+            loading.value = false;
+        }
     }
 }
 
+/**
+ * Refreshes reading history without replacing the book metadata.
+ * @param {Object} [target] Saved book, defaulting to the displayed book.
+ * @returns {Promise<void>}
+ */
 async function loadSessions(target = book.value) {
-    if (!target?.id) return;
+    if (!target?.id) {
+        return;
+    }
     const request = ++sessionsRequest;
     sessionsLoading.value = true;
     sessionsError.value = "";
     try {
         const result = await getReadingSessions(target);
-        if (request === sessionsRequest) sessions.value = result;
+        if (request === sessionsRequest) {
+            sessions.value = result;
+        }
     } catch (err) {
-        if (request === sessionsRequest) sessionsError.value = err.message;
+        if (request === sessionsRequest) {
+            sessionsError.value = err.message;
+        }
     } finally {
-        if (request === sessionsRequest) sessionsLoading.value = false;
+        if (request === sessionsRequest) {
+            sessionsLoading.value = false;
+        }
     }
 }
 
+/**
+ * Displays only the date parts known at the stored precision.
+ * @param {string|null} value Stored date.
+ * @param {string} precision day, month, year, or unknown.
+ * @returns {string} Localized date or unknown-date label.
+ */
 function dateLabel(value, precision) {
-    if (!value || precision === "unknown") return "Unknown date";
-    const [year, month, day] = value.split("-");
-    if (precision === "year") return year;
-    if (precision === "month")
+    if (!value || precision === "unknown") {
+        return "Unknown date";
+    }
+    const [year, month] = value.split("-");
+    if (precision === "year") {
+        return year;
+    }
+    if (precision === "month") {
         return new Date(`${year}-${month}-01T00:00:00`).toLocaleDateString(
             undefined,
-            { month: "short", year: "numeric" },
+            {month: "short", year: "numeric"},
         );
+    }
     return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
         day: "numeric",
         month: "short",
@@ -152,26 +192,37 @@ function dateLabel(value, precision) {
 function dateRange(session) {
     const start = dateLabel(session.start_date, session.start_date_precision),
         end = dateLabel(session.finish_date, session.finish_date_precision);
-    if (session.status === "dnf")
+    if (session.status === "dnf") {
         return `${session.start_date ? `Started: ${start}` : ""}${
             session.finish_date
                 ? `${session.start_date ? " · " : ""}Stopped: ${end}`
                 : ""
         }`;
+    }
     return session.finish_date ? `${start} – ${end}` : `Started: ${start}`;
 }
 
 function progressLabel(session) {
-    if (!session.dnf_progress_type) return "";
-    if (session.dnf_progress_type === "time")
+    if (!session.dnf_progress_type) {
+        return "";
+    }
+    if (session.dnf_progress_type === "time") {
         return `Progress: ${Math.floor(
             Number(session.dnf_progress_value) / 60,
         )}h ${Number(session.dnf_progress_value) % 60}m`;
+    }
     return `Progress: ${session.dnf_progress_value}${session.dnf_progress_type === "percentage" ? "%" : " pages"}`;
 }
 
+/**
+ * Creates or updates the selected reading attempt after form validation.
+ * @param {Object} session API fields emitted by ReadingSessionForm.
+ * @returns {Promise<void>} Errors keep the editor open.
+ */
 async function saveSession(session) {
-    if (sessionSaving.value) return;
+    if (sessionSaving.value) {
+        return;
+    }
     const targetBookId = book.value?.id;
     sessionSaving.value = true;
     sessionsError.value = "";
@@ -179,10 +230,15 @@ async function saveSession(session) {
         const saved = editingSession.value
             ? await updateReadingSession(editingSession.value.id, session)
             : await createReadingSession(book.value, session);
-        if (book.value?.id !== targetBookId) return;
+        if (book.value?.id !== targetBookId) {
+            return;
+        }
         const index = sessions.value.findIndex((item) => item.id === saved.id);
-        if (index < 0) sessions.value.push(saved);
-        else sessions.value[index] = saved;
+        if (index < 0) {
+            sessions.value.push(saved);
+        } else {
+            sessions.value[index] = saved;
+        }
         sessions.value.sort(
             (a, b) =>
                 String(b.start_date ?? b.created_at).localeCompare(
@@ -191,33 +247,49 @@ async function saveSession(session) {
         );
         formOpen.value = false;
         editingSession.value = null;
-        if (saved.status === book.value.status) return;
-        book.value = { ...book.value, status: saved.status };
+        if (saved.status === book.value.status) {
+            return;
+        }
+        book.value = {...book.value, status: saved.status};
     } catch (err) {
-        if (book.value?.id === targetBookId) sessionsError.value = err.message;
+        if (book.value?.id === targetBookId) {
+            sessionsError.value = err.message;
+        }
     } finally {
         sessionSaving.value = false;
     }
 }
 
+/**
+ * Deletes one confirmed attempt and removes it from the visible history.
+ * @param {Object} session Persisted reading attempt.
+ * @returns {Promise<void>}
+ */
 async function removeSession(session) {
     if (
         deletingSessionIds.value.includes(session.id) ||
         (sessionSaving.value && editingSession.value?.id === session.id)
-    )
+    ) {
         return;
-    if (!window.confirm("Delete this reading session?")) return;
+    }
+    if (!window.confirm("Delete this reading session?")) {
+        return;
+    }
     deletingSessionIds.value = [...deletingSessionIds.value, session.id];
     const targetBookId = book.value?.id;
     sessionsError.value = "";
     try {
         await deleteReadingSession(session.id);
-        if (book.value?.id !== targetBookId) return;
+        if (book.value?.id !== targetBookId) {
+            return;
+        }
         sessions.value = sessions.value.filter(
             (item) => item.id !== session.id,
         );
     } catch (err) {
-        if (book.value?.id === targetBookId) sessionsError.value = err.message;
+        if (book.value?.id === targetBookId) {
+            sessionsError.value = err.message;
+        }
     } finally {
         deletingSessionIds.value = deletingSessionIds.value.filter(
             (id) => id !== session.id,
@@ -228,8 +300,15 @@ async function removeSession(session) {
 const formatsLoading = ref(false);
 const formatsError = ref("");
 
+/**
+ * Replaces the owned-format selection after server confirmation.
+ * @param {string} format physical, ebook, or audiobook.
+ * @returns {Promise<void>} A failed write retains the previous selection.
+ */
 async function toggleFormat(format) {
-    if (formatsLoading.value || formatsFetching.value) return;
+    if (formatsLoading.value || formatsFetching.value) {
+        return;
+    }
     if (!book.value?.id) {
         formatsError.value = "The book does not exist in the database.";
         return;
@@ -248,7 +327,9 @@ async function toggleFormat(format) {
             nextFormats = [...ownedFormats.value, format];
         }
         await updateOwnedFormats(targetBookId, nextFormats);
-        if (book.value?.id === targetBookId) ownedFormats.value = nextFormats;
+        if (book.value?.id === targetBookId) {
+            ownedFormats.value = nextFormats;
+        }
     } catch (err) {
         if (book.value?.id === targetBookId) {
             formatsError.value = err.message;
@@ -261,7 +342,7 @@ async function toggleFormat(format) {
 }
 
 /** Merges the child status event into the current detail record. */
-async function handleStatusChange({ book: updatedBook, status }) {
+async function handleStatusChange({book: updatedBook, status}) {
     book.value = {
         ...book.value,
         ...updatedBook,
@@ -303,7 +384,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Navbar />
+    <Navbar/>
 
     <main class="container-xl py-4 book-details">
         <div class="wrapper">
@@ -313,9 +394,9 @@ onUnmounted(() => {
                 aria-label="Book details"
             >
                 <span class="visually-hidden" role="status"
-                    >Loading book details…</span
+                >Loading book details…</span
                 >
-                <BookDetailsSkeleton />
+                <BookDetailsSkeleton/>
             </section>
 
             <LoadingIndicator
@@ -343,6 +424,7 @@ onUnmounted(() => {
                                 decoding="async"
                                 loading="eager"
                                 sizes="(max-width: 767px) 177px, 275px"
+                                @error="fallbackCoverImage($event, book.cover_url)"
                             />
                         </div>
                         <!-- Book metadata -->
@@ -385,7 +467,7 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-                    <hr class="my-4" />
+                    <hr class="my-4"/>
                     <!-- Description -->
                     <article class="book-details__description">
                         <h2 class="h5 visually-hidden">Description</h2>
@@ -587,31 +669,31 @@ onUnmounted(() => {
                                             class="d-flex gap-2 justify-content-between"
                                         >
                                             <strong
-                                                >Read #{{
+                                            >Read #{{
                                                     sessions.length - index
                                                 }}
                                                 — {{ session.status }}</strong
                                             ><span
-                                                class="text-body-secondary small"
-                                                >{{ dateRange(session) }}</span
-                                            >
+                                            class="text-body-secondary small"
+                                        >{{ dateRange(session) }}</span
+                                        >
                                         </div>
                                         <div class="text-body-secondary small">
                                             <span
                                                 v-if="progressLabel(session)"
-                                                >{{
+                                            >{{
                                                     progressLabel(session)
                                                 }}</span
                                             ><span
-                                                v-if="session.formats?.length"
-                                                >{{
-                                                    progressLabel(session)
-                                                        ? " · "
-                                                        : ""
-                                                }}{{
-                                                    session.formats.join(", ")
-                                                }}</span
-                                            >
+                                            v-if="session.formats?.length"
+                                        >{{
+                                                progressLabel(session)
+                                                    ? " · "
+                                                    : ""
+                                            }}{{
+                                                session.formats.join(", ")
+                                            }}</span
+                                        >
                                         </div>
                                         <button
                                             :disabled="
@@ -696,6 +778,12 @@ onUnmounted(() => {
 .book-details__headline,
 .book-details__description p {
     white-space: pre-line;
+}
+
+.book-details__cover {
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
 @media (max-width: 767.98px) {

@@ -1,9 +1,22 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
+/**
+ * Provides the API for viewing, adding, editing, and deleting reading attempts.
+ * Uses shared session validation and database transactions to keep reading
+ * history consistent with the current library status.
+ */
+
 require_once __DIR__ . '/../lib/reading_sessions.php';
 
+/**
+ * Sends JSON and ends the request so no later handler can also write a response.
+ * @param array $payload Response data.
+ * @param int $status HTTP status code.
+ * @return never
+ */
 function respond(array $payload, int $status = 200): never
 {
     http_response_code($status);
@@ -72,7 +85,10 @@ if ($method === 'GET') {
     // the response uses one consistent representation for every endpoint.
     $stmt =
         $pdo->prepare(
-            'SELECT id FROM reading_sessions WHERE book_id = ? ORDER BY COALESCE(start_date, finish_date, created_at) DESC, id DESC'
+            'SELECT id
+            FROM reading_sessions
+            WHERE book_id = ?
+            ORDER BY COALESCE(start_date, finish_date, created_at) DESC, id DESC'
         );
     $stmt->execute([$bookId]);
     $sessions = [];
@@ -107,7 +123,17 @@ if ($method === 'POST') {
         $data = normalizeSessionDates($data);
         $stmt =
             $pdo->prepare(
-                'INSERT INTO reading_sessions (book_id, status, start_date, start_date_precision, finish_date, finish_date_precision, dnf_progress_type, dnf_progress_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO reading_sessions (
+                    book_id,
+                    status,
+                    start_date,
+                    start_date_precision,
+                    finish_date,
+                    finish_date_precision,
+                    dnf_progress_type,
+                    dnf_progress_value
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
             );
         $stmt->execute(
             [

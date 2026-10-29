@@ -1,22 +1,11 @@
-# Kickstarter VUE JS
+# Bookshelf frontend
 
-Denne skabelon hjælper dig i gang med Vue.
-Der bruges Vite som byggeværktøj og Bootstrap er inkluderet
-
-## Project Setup
+Run from this directory:
 
 ```sh
 npm install
-```
 
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
+npm run test
 npm run build
 ```

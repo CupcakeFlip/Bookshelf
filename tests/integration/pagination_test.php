@@ -1,4 +1,5 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 

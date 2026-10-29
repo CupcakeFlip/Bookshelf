@@ -1,7 +1,14 @@
+<!-- Made with AI -->
+
+<!--
+    Provides search, genre-category, and sorting controls for saved collections.
+    Loads available genres from PHP and emits the chosen filters to the parent
+    view, which owns fetching books and resetting pagination.
+-->
 <script setup>
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
-import {getGenreFilterCategories, normalizeGenre, STANDARD_GENRES,} from "@/utils/bookFormatting";
+import {getGenreFilterCategories, STANDARD_GENRES} from "@/utils/bookFormatting";
 import {createLatestRequest} from "@/utils/latestRequest";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 
 const props = defineProps({status: {type: String, default: ""}});
 const emit = defineEmits(["change"]);
@@ -36,7 +43,9 @@ const standardGenres = computed(() =>
 );
 const selectedStandardGenre = computed({
     get() {
-        if (selectedGenres.value.length === 0) return "";
+        if (selectedGenres.value.length === 0) {
+            return "";
+        }
 
         return selectedCategories.value.length === 1
             ? selectedCategories.value[0]
@@ -51,25 +60,6 @@ const selectedStandardGenre = computed({
     },
 });
 
-const groupedGenres = computed(() => {
-    const groups = new Map();
-
-    for (const genre of genres.value) {
-        const name = normalizeGenre(genre.name);
-        const key = name.toLowerCase();
-
-        if (!groups.has(key)) {
-            groups.set(key, {
-                name,
-                ids: [],
-            });
-        }
-
-        groups.get(key).ids.push(Number(genre.id));
-    }
-
-    return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
-});
 const filterCategories = computed(() => getGenreFilterCategories(genres.value));
 
 const activeGenres = computed(() =>
@@ -89,7 +79,13 @@ function removeGenreGroup(group) {
     emitChange();
 }
 
+/**
+ * Emits a fresh filter snapshot; the parent resets pagination and fetches books.
+ * Category names are authoritative; the empty genres field preserves the event shape.
+ * @returns {void}
+ */
 function emitChange() {
+    clearTimeout(timer);
     emit("change", {
         q: query.value,
         genres: [],
@@ -107,13 +103,11 @@ function selectGenre() {
     emitChange();
 }
 
-function removeGenre(id) {
-    selectedGenres.value = selectedGenres.value.filter(
-        (item) => item !== Number(id),
-    );
-    emitChange();
-}
-
+/**
+ * Toggles category membership and derives the selected local IDs.
+ * @param {{name: string, ids: number[]}} group Category shown in the filters.
+ * @returns {void}
+ */
 function toggleAdvancedGenre(group) {
     const allSelected = selectedCategories.value.includes(group.name);
     selectedCategories.value = allSelected
@@ -150,6 +144,10 @@ function reset() {
     emitChange();
 }
 
+/**
+ * Loads choices for the current status and discards stale responses.
+ * @returns {Promise<void>} Failures are shown beside the genre control.
+ */
 async function loadGenres() {
     const request = genreRequests.start();
     genresLoading.value = true;
@@ -160,14 +158,21 @@ async function loadGenres() {
             : "";
         const response = await fetch(`/api/genres.php${suffix}`, {signal: request.signal});
         const payload = await response.json().catch(() => ({}));
-        if (!genreRequests.isCurrent(request)) return;
-        if (!response.ok)
+        if (!genreRequests.isCurrent(request)) {
+            return;
+        }
+        if (!response.ok) {
             throw Error(payload.error || "Could not load genres.");
+        }
         genres.value = Array.isArray(payload) ? payload : [];
     } catch (error) {
-        if (genreRequests.isCurrent(request) && error.name !== "AbortError") genreError.value = error.message;
+        if (genreRequests.isCurrent(request) && error.name !== "AbortError") {
+            genreError.value = error.message;
+        }
     } finally {
-        if (genreRequests.isCurrent(request)) genresLoading.value = false;
+        if (genreRequests.isCurrent(request)) {
+            genresLoading.value = false;
+        }
     }
 }
 

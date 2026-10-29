@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { createLatestRequest } from "./latestRequest";
+/* Made with AI */
+import {createLatestRequest} from "@/utils/latestRequest";
+import {describe, expect, it} from "vitest";
 
 describe("latest request guard", () => {
     it("aborts the previous request and rejects its late result", () => {

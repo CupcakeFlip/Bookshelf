@@ -1,37 +1,39 @@
-import { describe, expect, it } from "vitest";
-import { createSSRApp, h } from "vue";
-import { renderToString } from "vue/server-renderer";
-import BookGridSkeleton from "./BookGridSkeleton.vue";
-import BookDetailsSkeleton from "./BookDetailsSkeleton.vue";
-import ListRowsSkeleton from "./ListRowsSkeleton.vue";
-import LoadingIndicator from "./LoadingIndicator.vue";
-import ButtonSpinner from "./ButtonSpinner.vue";
-import ReadingSessionForm from "./ReadingSessionForm.vue";
-import BookCollectionContent from "./BookCollectionContent.vue";
-import gridSource from "./BookGridSkeleton.vue?raw";
-import detailsSource from "./BookDetailsSkeleton.vue?raw";
-import rowsSource from "./ListRowsSkeleton.vue?raw";
+/* Made with AI */
+import BookCollectionContent from "@/components/BookCollectionContent.vue";
+import BookDetailsSkeleton from "@/components/BookDetailsSkeleton.vue";
+import detailsSource from "@/components/BookDetailsSkeleton.vue?raw";
+import BookGridSkeleton from "@/components/BookGridSkeleton.vue";
+import gridSource from "@/components/BookGridSkeleton.vue?raw";
+import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import ListRowsSkeleton from "@/components/ListRowsSkeleton.vue";
+import rowsSource from "@/components/ListRowsSkeleton.vue?raw";
+import LoadingIndicator from "@/components/LoadingIndicator.vue";
+import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
+import {describe, expect, it} from "vitest";
+import {createSSRApp, h} from "vue";
+import {renderToString} from "vue/server-renderer";
 
 const render = (component, props = {}) => {
-    const app = createSSRApp({ render: () => h(component, props) });
-    app.component("RouterLink", { render: () => h("a") });
+    const app = createSSRApp({render: () => h(component, props)});
+    app.component("RouterLink", {render: () => h("a")});
     return renderToString(app);
 };
 
 describe("loading components", () => {
     it("renders card skeletons in the BookGrid columns without announcing each card", async () => {
-        const html = await render(BookGridSkeleton, { count: 12 });
+        const html = await render(BookGridSkeleton, {count: 12});
         expect(html.match(/col-6 col-md-4 col-lg-3 col-xl-3/g)).toHaveLength(12);
         expect(html).toContain('aria-hidden="true"');
         expect(html).toContain("book-skeleton__cover");
     });
 
     it("replaces initial skeletons with books and keeps books during refresh or errors", async () => {
-        const book = { id: 1, hardcover_id: "1", title: "Visible book", authors: [], status: null };
-        const initial = await render(BookCollectionContent, { books: [], loading: true, label: "Library books" });
-        const refreshing = await render(BookCollectionContent, { books: [book], loading: true, label: "Library books" });
-        const failed = await render(BookCollectionContent, { books: [book], error: "Request failed", label: "Library books" });
-        const loaded = await render(BookCollectionContent, { books: [book], label: "Library books" });
+        const book = {id: 1, hardcover_id: "1", title: "Visible book", authors: [], status: null};
+        const initial = await render(BookCollectionContent, {books: [], loading: true, label: "Library books"});
+        const refreshing = await render(BookCollectionContent, {books: [book], loading: true, label: "Library books"});
+        const failed = await render(BookCollectionContent,
+            {books: [book], error: "Request failed", label: "Library books"});
+        const loaded = await render(BookCollectionContent, {books: [book], label: "Library books"});
         expect(initial).toContain("book-skeleton__cover");
         expect(initial).toContain('role="status"');
         expect(refreshing).toContain("Visible book");
@@ -48,7 +50,7 @@ describe("loading components", () => {
     });
 
     it("announces one meaningful loading status and hides the spinner itself", async () => {
-        const html = await render(LoadingIndicator, { label: "Updating library…" });
+        const html = await render(LoadingIndicator, {label: "Updating library…"});
         expect(html).toContain('role="status"');
         expect(html).toContain('aria-live="polite"');
         expect(html).toContain("Updating library…");
@@ -57,7 +59,7 @@ describe("loading components", () => {
     });
 
     it("disables the session save action and shows a spinner while saving", async () => {
-        const saving = await render(ReadingSessionForm, { saving: true });
+        const saving = await render(ReadingSessionForm, {saving: true});
         const idle = await render(ReadingSessionForm);
         expect(saving).toMatch(/aria-busy="true"[^>]*>.*spinner-border/s);
         expect(saving).toContain("Saving…");

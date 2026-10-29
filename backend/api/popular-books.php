@@ -1,4 +1,5 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
@@ -43,7 +44,8 @@ function hardcoverRequest(
     string $query,
     array  $variables,
     string $token
-): array {
+): array
+{
     $curl = curl_init(HARDCOVER_API_URL);
 
     curl_setopt_array(
@@ -176,7 +178,13 @@ function enrichStatuses(PDO $pdo, array $books): array
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt =
         $pdo->prepare(
-            "SELECT b.external_api_id, ub.status FROM books b JOIN user_books ub ON ub.book_id = b.id WHERE b.external_api_id IN ($placeholders)"
+            "SELECT
+                b.external_api_id,
+                ub.status
+            FROM books AS b
+            JOIN user_books AS ub
+                ON ub.book_id = b.id
+            WHERE b.external_api_id IN ($placeholders)"
         );
     $stmt->execute($ids);
     $statuses = [];
@@ -268,7 +276,7 @@ if ($ids === []) {
 $hasNext = count($ids) > BOOK_LIMIT;
 $ids = array_slice($ids, 0, BOOK_LIMIT);
 
-// Step 2: Fetch details for all 20 books in one request.
+// Fetch details for this page in one request.
 $booksQuery = <<<'GRAPHQL'
 query PopularBookDetails($ids: [Int!]!) {
     books(where: {id: {_in: $ids}}) {
@@ -320,4 +328,6 @@ foreach ($ids as $id) {
     }
 }
 
-respond(['books' => enrichStatuses($pdo, $popularBooks), 'page' => $page, 'limit' => BOOK_LIMIT, 'hasNext' => $hasNext]);
+respond(
+    ['books' => enrichStatuses($pdo, $popularBooks), 'page' => $page, 'limit' => BOOK_LIMIT, 'hasNext' => $hasNext]
+);

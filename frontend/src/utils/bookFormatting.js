@@ -1,12 +1,23 @@
-/** Formats author values for display without changing the source data. */
+/* Made with AI */
+
+/**
+ * Provides shared author labels, genre names, and genre-filter categories.
+ * Shares display rules between book cards, catalogue search, and collection
+ * filters, with explicit genre categories for the available local genres.
+ */
+/**
+ * Formats author names without changing the source data.
+ * @param {string|Array<string|{name?: string}>} authors Author names or API objects.
+ * @returns {string} Up to two names, followed by et al. when needed.
+ */
 export function formatAuthors(authors) {
     // Hardcover responses use both strings and objects, so normalize the
     // input locally instead of changing the API response shape.
     const values = Array.isArray(authors)
         ? authors
         : typeof authors === "string"
-          ? [authors]
-          : [];
+            ? [authors]
+            : [];
     const names = values
         .map((author) => (typeof author === "string" ? author : author?.name))
         .filter((name) => typeof name === "string" && name.trim())
@@ -59,6 +70,7 @@ const GENRE_ALIASES = new Map(
 );
 
 // Explicit category membership avoids guessing from words in genre names.
+// Keep this explicit list aligned with backend/api/books.php.
 const GENRE_CATEGORIES = {
     Paranormal: ["Paranormal", "Paranormal Romance", "Paranormal Fantasy"],
     Dark: ["Dark", "Dark Romance", "Dark Fantasy"],
@@ -85,7 +97,7 @@ const GENRE_CATEGORIES = {
         "Fantasy and Science Fiction ",
         "Romance|science Fiction & Fantasy",
         "Magic",
-        "Fantasy romance",
+        "Romance fantasy",
         "dragons",
     ],
     Romance: [
@@ -98,7 +110,7 @@ const GENRE_CATEGORIES = {
         "Paranormal Romance",
         "Romance|science Fiction & Fantasy",
         "Sports Romance",
-        "Fantasy romance",
+        "Romance fantasy",
     ],
     "Science Fiction": [
         "Science Fiction & Fantasy",
@@ -111,6 +123,11 @@ const GENRE_CATEGORIES = {
     Adventure: ["Adventure", "Action & Adventure"],
 };
 
+/**
+ * Builds a case- and punctuation-independent lookup key.
+ * @param {unknown} value Genre name or alias.
+ * @returns {string} Normalized lookup key.
+ */
 function genreKey(value) {
     return String(value ?? "")
         .trim()
@@ -118,7 +135,11 @@ function genreKey(value) {
         .replace(/[^a-z0-9]+/g, "");
 }
 
-/** Normalizes a genre alias or applies readable capitalization to an unknown genre. */
+/**
+ * Resolves a known alias or capitalizes an unfamiliar genre.
+ * @param {unknown} value Genre name.
+ * @returns {string} Display name, or an empty string.
+ */
 export function normalizeGenre(value) {
     const original = String(value ?? "").trim();
     if (!original) return "";
@@ -131,7 +152,11 @@ export function normalizeGenre(value) {
         .join(" ");
 }
 
-/** Returns normalized genre names without mutating the supplied book data. */
+/**
+ * Normalizes and deduplicates a book's genre names.
+ * @param {Array<string|{name?: string}>} genres Raw genre values.
+ * @returns {string[]} Unique display names.
+ */
 export function normalizeGenres(genres) {
     if (!Array.isArray(genres)) return [];
     return [
@@ -147,7 +172,11 @@ export function normalizeGenres(genres) {
     ];
 }
 
-/** Builds the standard and book-specific genre groups for a select element. */
+/**
+ * Separates standard choices from additional genres in the current results.
+ * @param {Object[]} books Current book results.
+ * @returns {{standard: string[], additional: string[]}} Sorted select groups.
+ */
 export function getGenreOptions(books) {
     const standard = [...STANDARD_GENRES].sort();
     const standardKeys = new Set(standard.map(genreKey));
@@ -160,10 +189,15 @@ export function getGenreOptions(books) {
     ]
         .filter((genre) => !standardKeys.has(genreKey(genre)))
         .sort();
-    return { standard, additional };
+    return {standard, additional};
 }
 
-/** Filters books by normalized genre while preserving the original array and objects. */
+/**
+ * Filters Catalogue results without mutating the source array.
+ * @param {Object[]} books Current results.
+ * @param {string} selectedGenre Selected display name, or empty for all.
+ * @returns {Object[]} Matching books.
+ */
 export function filterBooksByGenre(books, selectedGenre) {
     if (!selectedGenre || selectedGenre === "All genres")
         return Array.isArray(books) ? [...books] : [];
@@ -173,25 +207,12 @@ export function filterBooksByGenre(books, selectedGenre) {
     );
 }
 
-export function expandGenreIds(selectedIds, availableGenres) {
-    const selected = new Set(
-        (Array.isArray(selectedIds) ? selectedIds : []).map(Number),
-    );
-    const available = Array.isArray(availableGenres) ? availableGenres : [];
-    for (const id of [...selected]) {
-        const genre = available.find((item) => Number(item?.id) === id);
-        const category = Object.entries(GENRE_CATEGORIES).find(
-            ([name]) => normalizeGenre(name) === normalizeGenre(genre?.name),
-        );
-        if (!category) continue;
-        const names = new Set(category[1].map(normalizeGenre));
-        for (const item of available)
-            if (names.has(normalizeGenre(item?.name)))
-                selected.add(Number(item.id));
-    }
-    return [...selected];
-}
-
+/**
+ * Matches explicit filter categories to available database genre IDs.
+ * Keep category membership aligned with BOOK_GENRE_CATEGORIES in books.php.
+ * @param {Object[]} availableGenres Local genres with IDs and names.
+ * @returns {Array<{name: string, ids: number[]}>} Categories with at least one match.
+ */
 export function getGenreFilterCategories(availableGenres) {
     const genres = Array.isArray(availableGenres) ? availableGenres : [];
     return Object.entries(GENRE_CATEGORIES)
@@ -210,4 +231,4 @@ export function getGenreFilterCategories(availableGenres) {
         .filter((category) => category.ids.length);
 }
 
-export { GENRE_CATEGORIES, STANDARD_GENRES };
+export {GENRE_CATEGORIES, STANDARD_GENRES};

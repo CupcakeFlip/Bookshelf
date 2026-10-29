@@ -1,7 +1,12 @@
+<!--
+    Provides shared page navigation and the manual Hardcover sync action.
+    Shows sync results in a toast and notifies open views when book metadata
+    has changed so they can refresh their displayed data.
+-->
 <script setup>
-import { nextTick, onUnmounted, ref } from "vue";
-import { Toast } from "bootstrap";
-import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import ButtonSpinner from "@/components/loading/ButtonSpinner.vue";
+import {Toast} from "bootstrap";
+import {nextTick, onUnmounted, ref} from "vue";
 
 const syncing = ref(false);
 const toastElement = ref(null);
@@ -10,19 +15,11 @@ const toastVariant = ref("success");
 let active = true;
 /** Navigation entries rendered in the primary menu. */
 const items = [
-    { label: "Home", to: "/" },
-    { label: "Lists", to: "/lists" },
-    { label: "Stats", to: "/stats", soon: true },
-    { label: "Library", to: "/library" },
+    {label: "Home", to: "/"},
+    {label: "Lists", to: "/lists"},
+    //{label: "Stats", to: "/stats"},
+    {label: "Library", to: "/library"},
 ];
-
-/**
- * Prevents placeholder links from navigating before their feature exists.
- *
- * @param {MouseEvent} event Router-link click event.
- * @returns {void}
- */
-const stop = (event) => event.preventDefault();
 
 /**
  * Synchronizes metadata for locally saved books with Hardcover.
@@ -32,7 +29,9 @@ const stop = (event) => event.preventDefault();
  * @returns {Promise<void>}
  */
 async function syncBooks() {
-    if (syncing.value) return;
+    if (syncing.value) {
+        return;
+    }
     syncing.value = true;
 
     try {
@@ -57,18 +56,19 @@ async function syncBooks() {
             failed > 0 && failed === (data.total ?? 0)
                 ? "danger"
                 : failed > 0
-                  ? "warning"
-                  : updated === 0
-                    ? "info"
-                    : "success";
+                    ? "warning"
+                    : updated === 0
+                        ? "info"
+                        : "success";
         await showToast(
             data.message ||
-                `${updated} updated, ${unchanged} unchanged, ${failed} failed.`,
+            `${updated} updated, ${unchanged} unchanged, ${failed} failed.`,
             variant,
         );
 
-        if (updated > 0)
+        if (updated > 0) {
             window.dispatchEvent(new CustomEvent("bookshelf:books-synced"));
+        }
     } catch (error) {
         await showToast(
             error instanceof Error
@@ -83,17 +83,24 @@ async function syncBooks() {
 
 /** Shows one auto-dismissing Bootstrap toast without affecting navbar layout. */
 async function showToast(message, variant) {
-    if (!active) return;
+    if (!active) {
+        return;
+    }
     toastMessage.value = message;
     toastVariant.value = variant;
     await nextTick();
-    if (!active || !toastElement.value) return;
+    if (!active || !toastElement.value) {
+        return;
+    }
     Toast.getOrCreateInstance(toastElement.value, {
         autohide: true,
         delay: 5000,
     }).show();
 }
-onUnmounted(() => { active = false; });
+
+onUnmounted(() => {
+    active = false;
+});
 </script>
 
 <template>
@@ -102,10 +109,10 @@ onUnmounted(() => { active = false; });
         aria-label="Primary navigation"
         class="navbar navbar-expand-lg navbar-dark"
     >
-        <div class="container">
-            <RouterLink class="navbar-brand fw-semibold" to="/"
-                >Bookshelf</RouterLink
-            >
+        <div class="container-xl">
+            <RouterLink class="navbar-brand fw-semibold" to="/">
+                Bookshelf
+            </RouterLink>
             <button
                 aria-controls="primary-navigation"
                 aria-expanded="false"
@@ -115,39 +122,33 @@ onUnmounted(() => { active = false; });
                 data-bs-toggle="collapse"
                 type="button"
             >
-                <span class="navbar-toggler-icon" />
+                <span class="navbar-toggler-icon"/>
             </button>
             <div id="primary-navigation" class="collapse navbar-collapse">
                 <ul class="gap-lg-2 navbar-nav ms-auto align-items-lg-center">
                     <li v-for="item in items" :key="item.to" class="nav-item">
                         <RouterLink
-                            :aria-disabled="item.soon ? 'true' : undefined"
-                            :tabindex="item.soon ? -1 : undefined"
                             :to="item.to"
                             class="nav-link"
-                            @click="item.soon ? stop($event) : undefined"
                         >
                             {{ item.label }}
-                            <span v-if="item.soon" class="visually-hidden">
-                                (coming soon)
-                            </span>
                         </RouterLink>
                     </li>
                     <li class="nav-item">
                         <button
-                            :aria-label="syncing ? 'Syncing with Hardcover' : 'Sync with Hardcover'"
                             :aria-busy="syncing"
+                            :aria-label="syncing ? 'Syncing with Hardcover' : 'Sync with Hardcover'"
                             :disabled="syncing"
                             class="btn btn-sm nav-link sync-button"
                             title="Sync with Hardcover"
                             type="button"
                             @click="syncBooks"
                         >
-                            <ButtonSpinner v-if="syncing" no-margin />
+                            <ButtonSpinner v-if="syncing" no-margin/>
                             <i
+                                v-if="!syncing"
                                 aria-hidden="true"
                                 class="bi bi-arrow-clockwise sync-icon"
-                                v-if="!syncing"
                             />
                         </button>
                     </li>

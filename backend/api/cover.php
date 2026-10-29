@@ -1,6 +1,13 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
+
+/**
+ * Serves cached WebP covers requested by the frontend image helpers.
+ * Uses shared image processing for supported Hardcover URLs and sizes,
+ * and redirects to the original cover when a cached version cannot be created.
+ */
 
 require_once __DIR__ . '/../lib/cover_images.php';
 
@@ -15,7 +22,13 @@ if (!is_string($url) || !trustedCoverUrl($url) || !in_array($width, COVER_WIDTHS
     exit;
 }
 $cacheDir = getenv('COVER_CACHE_DIR') ?: '/var/cache/bookshelf/covers';
-$path = optimizedCover($url, $width, $cacheDir);
+try {
+    $path = optimizedCover($url, $width, $cacheDir);
+} catch (Throwable $error) {
+    // Missing codecs or hosting limits must not turn an optional optimization into a broken cover.
+    error_log('Cover optimization failed: ' . $error->getMessage());
+    $path = null;
+}
 if ($path === null) {
     header('Cache-Control: no-store');
     header('Location: ' . $url, true, 302);

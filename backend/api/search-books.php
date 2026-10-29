@@ -1,4 +1,5 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
@@ -337,7 +338,6 @@ curl_setopt_array(
 );
 
 $responseBody = curl_exec($curl);
-$curlError = curl_error($curl);
 $httpStatus = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
 if ($responseBody === false) {

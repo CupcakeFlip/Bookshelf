@@ -1,6 +1,12 @@
+<!--
+    Provides reusable page navigation and an optional books-per-page selector.
+    Supports both known page counts and Hardcover results with a next-page flag.
+    Emits navigation requests while the parent view owns page state and fetching.
+-->
 <script setup>
 import {computed} from "vue";
 
+// The parent owns page state. A null totalPages uses Hardcover's hasNext flag.
 const props = defineProps({
     page: {type: Number, required: true},
     totalPages: {type: Number, default: null},
@@ -10,8 +16,11 @@ const props = defineProps({
     disabled: {type: Boolean, default: false},
 });
 const emit = defineEmits(["page-change", "limit-change"]);
+// Show at most five page buttons, shifting the window near either end.
 const pages = computed(() => {
-    if (props.totalPages === null) return [];
+    if (props.totalPages === null) {
+        return [];
+    }
     const first = Math.max(1, Math.min(props.page - 2, props.totalPages - 4));
     return Array.from({length: Math.min(5, props.totalPages)}, (_, index) => first + index);
 });
@@ -19,10 +28,20 @@ const nextEnabled = computed(() =>
     props.totalPages === null ? props.hasNext : props.page < props.totalPages,
 );
 
+
 function go(page) {
-    if (!props.disabled && page >= 1 && (props.totalPages === null || page <= props.totalPages))
-        emit("page-change", page);
+    if (
+        props.disabled ||
+        page < 1 ||
+        page === props.page ||
+        (props.totalPages !== null && page > props.totalPages)
+    ) {
+        return;
+    }
+
+    emit("page-change", page);
 }
+
 </script>
 
 <template>
@@ -34,8 +53,8 @@ function go(page) {
             <label for="books-page-size">Books per page</label>
             <select
                 id="books-page-size"
-                :value="limit"
                 :disabled="disabled"
+                :value="limit"
                 class="form-select form-select-sm w-auto"
                 @change="emit('limit-change', Number($event.target.value))"
             >
@@ -45,7 +64,8 @@ function go(page) {
         <nav aria-label="Book pages">
             <ul class="pagination mb-0 flex-wrap">
                 <li :class="{ disabled: disabled || page <= 1 }" class="page-item">
-                    <button :disabled="disabled || page <= 1" class="page-link" type="button" @click="go(page - 1)">Previous
+                    <button :disabled="disabled || page <= 1" class="page-link" type="button" @click="go(page - 1)">
+                        Previous
                     </button>
                 </li>
                 <li v-for="number in pages" :key="number" :class="{ active: number === page }" class="page-item">
@@ -61,7 +81,9 @@ function go(page) {
                     <span aria-current="page" class="page-link">Page {{ page }}</span>
                 </li>
                 <li :class="{ disabled: disabled || !nextEnabled }" class="page-item">
-                    <button :disabled="disabled || !nextEnabled" class="page-link" type="button" @click="go(page + 1)">Next</button>
+                    <button :disabled="disabled || !nextEnabled" class="page-link" type="button" @click="go(page + 1)">
+                        Next
+                    </button>
                 </li>
             </ul>
         </nav>

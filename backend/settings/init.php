@@ -2,10 +2,15 @@
 
 declare(strict_types=1);
 
+/**
+ * Opens and returns the shared MariaDB connection used by PHP endpoints.
+ * Reads database settings from the environment and passes them to Database,
+ * keeping connection setup in one place.
+ */
+
 require_once __DIR__ . '/../classes/Database.php';
 
 /** Read database settings from the Docker environment, with local defaults. */
-// Read local Docker database settings from the environment.
 $host = getenv('DB_HOST') ?: '127.0.0.1';
 $port = getenv('DB_PORT') ?: '3306';
 $database = getenv('DB_DATABASE') ?: 'bookshelf';

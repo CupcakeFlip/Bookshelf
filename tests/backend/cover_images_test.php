@@ -1,14 +1,27 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../lib/cover_images.php';
+require_once __DIR__ . '/../../backend/lib/cover_images.php';
 
 function check(bool $condition, string $message): void
 {
     if (!$condition) {
         throw new RuntimeException($message);
     }
+}
+
+// Also run with -d disable_functions=imagewebp or curl_init to model missing hosting capabilities.
+if (!function_exists('imagewebp')) {
+    check(optimizedCover('https://assets.hardcover.app/test/cover.png', 320, sys_get_temp_dir()) === null,
+        'missing WebP support did not fall back');
+    echo "missing WebP fallback test passed\n";
+    exit;
+}
+if (!function_exists('curl_init')) {
+    check(downloadCover('https://assets.hardcover.app/test/cover.png') === null,
+        'missing cURL did not fall back');
 }
 
 $directory = sys_get_temp_dir() . '/bookshelf-cover-test-' . bin2hex(random_bytes(6));
@@ -64,6 +77,22 @@ try {
         check($path !== null && getimagesize($path)[2] === IMAGETYPE_WEBP, "$format conversion failed");
     }
     check(optimizedCover('https://assets.hardcover.app/test/gif', 320, $directory, static fn() => 'GIF89a') === null, 'unsupported format accepted');
+    $blocked = $directory . '/blocked';
+    file_put_contents($blocked, 'not a directory');
+    $warnings = [];
+    set_error_handler(static function (int $level, string $message) use (&$warnings): bool {
+        if (error_reporting() & $level) $warnings[] = $message;
+        return true;
+    });
+    try {
+        $beforeDownloads = $downloads;
+        check(optimizedCover($url, 320, $blocked, $download) === null, 'unavailable cache did not fall back');
+        check($downloads === $beforeDownloads, 'unavailable cache still downloaded the image');
+        check($warnings === [], 'cache failure emitted warnings that could break redirect headers');
+    } finally {
+        restore_error_handler();
+        unlink($blocked);
+    }
     echo "cover image tests passed\n";
 } finally {
     foreach (glob($directory . '/*/*') ?: [] as $file) unlink($file);

@@ -1,15 +1,20 @@
+<!--
+    Displays a reading-status list as a clickable row with recent book covers.
+    Connects the lists overview to the matching status-filtered detail page
+    and adapts the cover preview to the available screen width.
+-->
 <script setup>
-import { computed } from "vue";
-import { useRouter } from "vue-router";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
+import {fallbackCoverImage, optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
+import {computed} from "vue";
+import {useRouter} from "vue-router";
 
-const props = defineProps({ list: { type: Object, required: true } });
+const props = defineProps({list: {type: Object, required: true}});
 const router = useRouter();
 
 function openList() {
     router.push({
         name: "list-detail",
-        params: { status: props.list.id },
+        params: {status: props.list.id},
     });
 }
 
@@ -39,9 +44,10 @@ const preview = computed(
                     :alt="`Cover for ${book.title}`"
                     :src="optimizedCoverUrl(book.cover_url)"
                     :srcset="optimizedCoverSrcset(book.cover_url)"
-                    sizes="(max-width: 575px) 56px, 80px"
-                    loading="lazy"
                     decoding="async"
+                    loading="lazy"
+                    sizes="(max-width: 575px) 56px, 80px"
+                    @error="fallbackCoverImage($event, book.cover_url)"
                 />
                 <span v-else aria-hidden="true">No cover</span>
             </span>

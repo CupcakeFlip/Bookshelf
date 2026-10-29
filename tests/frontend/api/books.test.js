@@ -1,10 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-    createReadingSession,
-    saveBookStatus,
-    updateReadingSession,
-    searchLocalBooks,
-} from "./books";
+/* Made with AI */
+import {createReadingSession, saveBookStatus, searchLocalBooks, updateReadingSession,} from "@/api/books";
+import {afterEach, describe, expect, it, vi} from "vitest";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -12,9 +8,12 @@ describe("local search pagination", () => {
     it("reads every matching page for combined Catalogue search", async () => {
         vi.stubGlobal("fetch", vi.fn(async (url) => ({
             ok: true,
-            json: async () => ({ books: [{ id: new URL(url, "http://localhost").searchParams.get("page") }], totalPages: 2 }),
+            json: async () => ({
+                books: [{id: new URL(url, "http://localhost").searchParams.get("page")}],
+                totalPages: 2
+            }),
         })));
-        expect(await searchLocalBooks("stars")).toEqual([{ id: "1" }, { id: "2" }]);
+        expect(await searchLocalBooks("stars")).toEqual([{id: "1"}, {id: "2"}]);
         expect(fetch.mock.calls[0][0]).toContain("limit=96");
         expect(fetch.mock.calls[1][0]).toContain("page=2");
     });
@@ -22,13 +21,13 @@ describe("local search pagination", () => {
 
 describe("reading session payloads", () => {
     it("does not send date form UI fields when dates are empty", async () => {
-        const response = { ok: true, json: async () => ({ id: 1 }) };
+        const response = {ok: true, json: async () => ({id: 1})};
         vi.stubGlobal(
             "fetch",
             vi.fn(async () => response),
         );
         await createReadingSession(
-            { hardcover_id: 42 },
+            {hardcover_id: 42},
             {
                 status: "finished",
                 formats: [],
@@ -49,10 +48,10 @@ describe("reading session payloads", () => {
             "fetch",
             vi.fn(async () => ({
                 ok: true,
-                json: async () => ({ status: "finished" }),
+                json: async () => ({status: "finished"}),
             })),
         );
-        await saveBookStatus({ hardcover_id: 42 }, "finished", {
+        await saveBookStatus({hardcover_id: 42}, "finished", {
             finish_date: "2026-10-19",
             finish_date_precision: "day",
             formats: ["audiobook"],
@@ -67,7 +66,7 @@ describe("reading session payloads", () => {
             "fetch",
             vi.fn(async () => ({
                 ok: true,
-                json: async () => ({ id: 9, formats: [] }),
+                json: async () => ({id: 9, formats: []}),
             })),
         );
         await updateReadingSession(9, {
@@ -87,10 +86,10 @@ describe("reading session payloads", () => {
             "fetch",
             vi.fn(async () => ({
                 ok: true,
-                json: async () => ({ status: "dnf" }),
+                json: async () => ({status: "dnf"}),
             })),
         );
-        await saveBookStatus({ hardcover_id: 42 }, "dnf", {
+        await saveBookStatus({hardcover_id: 42}, "dnf", {
             finish_date: null,
             finish_date_precision: "unknown",
             formats: [],

@@ -1,10 +1,19 @@
+<!-- Made with AI -->
+
+<!--
+    Provides the shared control for adding, changing, or removing library status.
+    Uses the reading-status dialog for Finished and Did Not Finish details,
+    and reports confirmed API changes to cards and the book details page.
+-->
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { removeBookStatus, saveBookStatus } from "@/api/books";
+import {removeBookStatus, saveBookStatus} from "@/api/books";
+import ButtonSpinner from "@/components/loading/ButtonSpinner.vue";
 import ReadingStatusDialog from "@/components/ReadingStatusDialog.vue";
-import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import {computed, nextTick, onMounted, onUnmounted, ref, useId, watch} from "vue";
 
 const dropdownElement = ref(null);
+const statusButton = ref(null);
+const menuId = useId();
 const pending = ref(false);
 const saving = ref(false);
 const isMenuOpen = ref(false);
@@ -15,12 +24,12 @@ const dialogStatus = ref("finished");
 let active = true;
 
 const statusOptions = [
-    { value: null, label: "Not in library" },
-    { value: "want_to_read", label: "Want to read" },
-    { value: "reading", label: "Reading" },
-    { value: "finished", label: "Finished" },
-    { value: "paused", label: "Paused" },
-    { value: "dnf", label: "Did not finish" },
+    {value: null, label: "Not in library"},
+    {value: "want_to_read", label: "Want to read"},
+    {value: "reading", label: "Reading"},
+    {value: "finished", label: "Finished"},
+    {value: "paused", label: "Paused"},
+    {value: "dnf", label: "Did not finish"},
 ];
 
 /**
@@ -31,8 +40,8 @@ const statusOptions = [
 
 /** @type {{book: BookStatusData}} */
 const props = defineProps({
-    book: { type: Object, required: true },
-    beforeStatusChange: { type: Function, default: null },
+    book: {type: Object, required: true},
+    beforeStatusChange: {type: Function, default: null},
 });
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["status-change", "menu-toggle"]);
@@ -94,45 +103,90 @@ async function selectStatus(status) {
     errorMessage.value = "";
     isMenuOpen.value = false;
     try {
-        let details = {};
+        let saved;
         if (status === "finished" || status === "dnf") {
             dialogStatus.value = status;
             finishedDialogOpen.value = true;
-            details = await new Promise((resolve) => {
+            saved = await new Promise((resolve) => {
                 finishedDetails.value = resolve;
             });
-            if (details === null) return;
+            if (saved === null) {
+                return;
+            }
+        } else {
+            saved = await persistStatus(status, previous);
         }
-        if (props.beforeStatusChange) {
-            details = await props.beforeStatusChange(status, previous);
-            if (details === null) return;
+        if (!active) {
+            return;
         }
-        if (!active) return;
-        saving.value = true;
-        const saved =
-            status === null
-                ? await removeBookStatus(props.book)
-                : await saveBookStatus(props.book, status, details);
-        if (active) emit("status-change", {
-            book: { ...props.book, ...saved, status },
-            status,
-            previous,
-        });
+        if (saved === null) {
+            return;
+        }
+        if (active) {
+            emit("status-change", {
+                book: {...props.book, ...saved, status},
+                status,
+                previous,
+            });
+        }
     } catch (error) {
         errorMessage.value = error.message;
     } finally {
         saving.value = false;
         pending.value = false;
+        if (status === "finished" || status === "dnf") {
+            nextTick(() => {
+                if (document.activeElement === document.body) {
+                    statusButton.value?.focus();
+                }
+            });
+        }
     }
 }
 
 /**
- * Uses the primary status button as a shortcut for adding an untracked book.
+ * Runs the optional parent hook and persists a confirmed selection.
+ * @param {string|null} status New status, or null for removal.
+ * @param {string|null} previous Previous library status.
+ * @param {Object} [details={}] Confirmed session fields.
+ * @returns {Promise<Object|null>} Server result, or null if cancelled.
+ * @throws {Error} If the API rejects the change.
+ */
+async function persistStatus(status, previous, details = {}) {
+    if (props.beforeStatusChange) {
+        details = await props.beforeStatusChange(status, previous);
+        if (details === null) {
+            return null;
+        }
+    }
+    if (!active) {
+        return null;
+    }
+    saving.value = true;
+    try {
+        return status === null
+            ? await removeBookStatus(props.book)
+            : await saveBookStatus(props.book, status, details);
+    } finally {
+        saving.value = false;
+    }
+}
+
+function saveDialogSession(session) {
+    return persistStatus(dialogStatus.value, currentStatus.value, session);
+}
+
+/**
+ * Adds an untracked book, or toggles the menu for a book already in the library.
  *
  * @returns {void}
  */
 function mainStatusAction() {
-    if (currentStatus.value === null) selectStatus("want_to_read");
+    if (currentStatus.value === null) {
+        selectStatus("want_to_read");
+    } else {
+        isMenuOpen.value = !isMenuOpen.value;
+    }
 }
 
 /**
@@ -179,17 +233,21 @@ watch(isMenuOpen, (isOpen) => {
     <div ref="dropdownElement" class="dropdown" @click.stop>
         <div class="btn-group w-100 h-100" role="group">
             <button
+                ref="statusButton"
+                :aria-busy="saving"
+                :aria-controls="currentStatus === null ? undefined : menuId"
+                :aria-expanded="currentStatus === null ? undefined : isMenuOpen"
                 :class="statusButtonClass"
                 :disabled="pending"
-                :aria-busy="saving"
                 class="btn btn-sm"
                 type="button"
                 @click="mainStatusAction"
             >
-                <ButtonSpinner v-if="saving" />
+                <ButtonSpinner v-if="saving"/>
                 {{ statusLabel }}
             </button>
             <button
+                :aria-controls="menuId"
                 :aria-expanded="isMenuOpen"
                 :class="statusButtonClass"
                 :disabled="pending"
@@ -200,7 +258,7 @@ watch(isMenuOpen, (isOpen) => {
                 <span class="visually-hidden">Toggle reading status</span>
             </button>
         </div>
-        <ul v-if="isMenuOpen" class="dropdown-menu show">
+        <ul v-if="isMenuOpen" :id="menuId" class="dropdown-menu show">
             <li v-for="option in statusOptions" :key="option.value">
                 <button
                     :class="{ active: currentStatus === option.value }"
@@ -218,6 +276,8 @@ watch(isMenuOpen, (isOpen) => {
         <ReadingStatusDialog
             v-model="finishedDialogOpen"
             :book="book"
+            :return-focus="statusButton"
+            :save-session="saveDialogSession"
             :status="dialogStatus"
             @cancel="finishedDetails?.(null)"
             @confirm="finishedDetails?.($event)"
@@ -228,6 +288,25 @@ watch(isMenuOpen, (isOpen) => {
 <style lang="scss" scoped>
 .dropdown-menu {
     z-index: 1060;
+}
+
+.btn-status,
+.dropdown-item {
+    min-width: 44px;
+    min-height: 24px;
+}
+
+.btn-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 767.98px), (pointer: coarse) {
+    .btn-status,
+    .dropdown-item {
+        min-height: 44px;
+    }
 }
 
 .btn-not-in-library {

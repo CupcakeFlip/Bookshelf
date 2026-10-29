@@ -1,10 +1,22 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
+/**
+ * Returns book details for the details page using a Hardcover ID.
+ * Prefers saved MariaDB data and fetches unsaved books from Hardcover,
+ * so viewing a book does not automatically add it to the library.
+ */
+
 require_once __DIR__ . '/../lib/books.php';
 
-/** Sends a JSON response and stops execution at the endpoint boundary. */
+/**
+ * Sends JSON and ends the request so no later handler can also write a response.
+ * @param array $payload Response data.
+ * @param int $status HTTP status code.
+ * @return never
+ */
 function detailsRespond(array $payload, int $status = 200): never
 {
     http_response_code($status);

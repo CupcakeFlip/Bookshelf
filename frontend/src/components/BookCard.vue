@@ -1,28 +1,24 @@
+<!--
+    Displays a reusable book card with a cover and a description on the reverse.
+    Links to book details and shares the reading-status control across collections.
+    Emits status changes and list requests for the parent view to handle.
+-->
+
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { formatAuthors } from "@/utils/bookFormatting";
-import { bookText } from "@/utils/bookText";
 import BookStatusDropdown from "@/components/BookStatusDropdown.vue";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "@/utils/coverImages";
+import {formatAuthors} from "@/utils/bookFormatting";
+import {bookText} from "@/utils/bookText";
+import {fallbackCoverImage, optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
+import {computed, nextTick, onBeforeUnmount, ref, watch} from "vue";
 
 const isFlipped = ref(false);
 const isMenuOpen = ref(false);
 
-/**
- * Book data supplied by a view or by the PHP API.
- *
- * @typedef {Object} BookCardData
- * @property {string|number} hardcover_id Stable Hardcover identifier.
- * @property {string} title Display title.
- * @property {string} [cover_url] Optional cover image URL.
- * @property {Array<string|{name?: string}>} [authors] Author names or API objects.
- * @property {{name?: string, position?: number|string}|string} [series] Series metadata.
- * @property {string|null} [status] Current locally persisted reading status.
- */
-/** @type {{book: BookCardData}} */
+
 const props = defineProps({
-    book: { type: Object, required: true },
-    coverLoading: { type: String, default: "lazy" },
+    // The book data displayed by this card.
+    book: {type: Object, required: true},
+    coverLoading: {type: String, default: "lazy"},
 });
 /** User actions that the parent view can handle. */
 const emit = defineEmits(["status-change", "add-to-list"]);
@@ -52,9 +48,15 @@ const descriptionBox = ref(null);
 const descriptionOverflow = ref(false);
 let descriptionObserver;
 
+/**
+ * Measures actual remaining card space instead of truncating by character count.
+ * @returns {void}
+ */
 function measureDescription() {
     const box = descriptionBox.value;
-    if (box) descriptionOverflow.value = box.scrollHeight > box.clientHeight + 1;
+    if (box) {
+        descriptionOverflow.value = box.scrollHeight > box.clientHeight + 1;
+    }
 }
 
 watch(descriptionBox, (box) => {
@@ -82,12 +84,15 @@ onBeforeUnmount(() => descriptionObserver?.disconnect());
                     <img
                         v-if="cover_url"
                         :alt="'Cover for ' + book.title"
+                        :loading="coverLoading"
                         :src="optimizedCoverUrl(cover_url)"
                         :srcset="optimizedCoverSrcset(cover_url)"
-                        sizes="(max-width: 767px) 163px, 298px"
-                        :loading="coverLoading"
-                        decoding="async"
                         class="book-cover"
+                        decoding="async"
+                        height="480"
+                        sizes="(min-width: 1400px) 306px, (min-width: 1200px) 261px, (min-width: 992px) calc(25vw - 24px), (min-width: 768px) calc(33.333vw - 19px), calc(50vw - 20px)"
+                        width="320"
+                        @error="fallbackCoverImage($event, cover_url)"
                     />
                     <div
                         v-else
@@ -133,7 +138,7 @@ onBeforeUnmount(() => descriptionObserver?.disconnect());
                         {{ seriesText }}
                     </p>
 
-                    <hr />
+                    <hr/>
 
                     <p v-if="text.headline" class="mb-2 book-meta book-headline">
                         {{ text.headline }}
@@ -161,7 +166,7 @@ onBeforeUnmount(() => descriptionObserver?.disconnect());
                 </div>
             </div>
         </div>
-        <hr class="m-0 mb-2" />
+        <hr class="m-0 mb-2"/>
         <div
             class="d-flex flex-wrap mt-auto m-2 gap-2 align-items-stretch justify-content-evenly"
         >
@@ -204,6 +209,8 @@ h3 {
     overflow: visible;
     // Let the status menu escape the card while the cover keeps its own clipping.
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
     perspective: 1000px;
 
     .dropdown,
@@ -235,10 +242,13 @@ h3 {
     background: transparent;
 }
 
+// Both faces share one grid cell; the front determines the available back-face height.
 .book-card__inner {
-    display: grid;
     position: relative;
+    display: grid;
+    min-width: 0;
     transition: transform 0.6s;
+    grid-template-columns: minmax(0, 1fr);
     transform-style: preserve-3d;
 }
 
@@ -251,6 +261,7 @@ h3 {
     display: flex;
     flex-direction: column;
     width: 100%;
+    min-width: 0;
     grid-area: 1 / 1;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
@@ -262,19 +273,27 @@ h3 {
 
 .book-card__back {
     position: absolute;
-    inset: 0;
     min-height: 0;
     transform: rotateY(180deg);
+    inset: 0;
 }
 
 .book-card__cover-wrapper {
+    position: relative;
     overflow: hidden;
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
     aspect-ratio: 2 / 3;
 }
 
 .book-cover {
+    position: absolute;
+    display: block;
     width: 100%;
+    max-width: 100%;
     height: 100%;
+    inset: 0;
     object-fit: cover;
 }
 
@@ -290,12 +309,14 @@ h3 {
     display: flex;
     flex: 1;
     flex-direction: column;
+    min-width: 0;
     padding: 1rem;
+    overflow-wrap: anywhere;
 }
 
 .book-card__back .book-card__content {
-    min-height: 0;
     overflow: hidden;
+    min-height: 0;
 }
 
 .book-card__back .book-title,
@@ -311,20 +332,15 @@ h3 {
     margin-top: auto;
 }
 
-.book-card__actions {
-    padding: 0 1rem 1rem;
-}
-
-.book-card__main:focus-visible,
-.book-card__actions button:focus-visible {
+.book-card__main:focus-visible {
     outline: 2px solid #b985c6;
     outline-offset: -2px;
 }
 
 .book-description {
-    min-height: 0;
-    flex: 1 1 auto;
     overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
     white-space: pre-line;
     color: var(--bs-light);
 }

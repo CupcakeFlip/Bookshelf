@@ -1,4 +1,15 @@
 <?php
+/** Made with AI */
+
+/**
+ * Handles book data and database operations.
+ *
+ * Fetches and normalizes book information from the Hardcover API,
+ * retrieves saved books from MariaDB, and manages saving books
+ * along with their authors, series, genres, and reading status.
+ *
+ * Used by the book-related API endpoints.
+ */
 
 declare(strict_types=1);
 
@@ -6,6 +17,11 @@ require_once __DIR__ . '/reading_sessions.php';
 
 const BOOKS_HARDCOVER_API_URL = 'https://api.hardcover.app/v1/graphql';
 
+/**
+ * Returns the first value that is neither null nor an empty string.
+ * @param array $values Candidates in priority order.
+ * @return mixed Selected value, or null.
+ */
 function booksFirstValue(array $values): mixed
 {
     foreach ($values as $value) {
@@ -16,6 +32,11 @@ function booksFirstValue(array $values): mixed
     return null;
 }
 
+/**
+ * Normalizes an exact Hardcover lookup and optional search enrichment.
+ * @param array $raw External book with an id field.
+ * @return array Book metadata ready for persistence or display.
+ */
 function booksNormalizeHardcover(array $raw): array
 {
     $authors = [];
@@ -64,6 +85,13 @@ function booksNormalizeHardcover(array $raw): array
     ];
 }
 
+/**
+ * Loads an exact external ID, then optionally enriches it with a matching search hit.
+ * @param int $bookId Hardcover ID, not a local database ID.
+ * @param string $token Server-side API token.
+ * @return array Normalized external book.
+ * @throws RuntimeException If the exact lookup fails or the book does not exist.
+ */
 function fetchHardcoverBook(int $bookId, string $token): array
 {
     $query = <<<'GRAPHQL'
@@ -136,6 +164,11 @@ GRAPHQL;
     return booksNormalizeHardcover($raw);
 }
 
+/**
+ * Maps joined database fields to the established frontend book response.
+ * @param array $book Database row with expanded relationships.
+ * @return array Normalized local book, including status and relationships.
+ */
 function normalizeSavedBook(array $book): array
 {
     return [
@@ -162,11 +195,30 @@ function normalizeSavedBook(array $book): array
     ];
 }
 
+/**
+ * Loads a canonical book and its authors, genres, custom lists, and tags.
+ * @param PDO $pdo Active connection.
+ * @param int $bookId Local books primary key.
+ * @return array Normalized book.
+ * @throws RuntimeException If the book no longer exists.
+ */
 function savedBook(PDO $pdo, int $bookId): array
 {
     $stmt =
         $pdo->prepare(
-            'SELECT b.*, s.id series_local_id, s.external_api_id series_external_api_id, s.name series_name, ub.status, ub.updated_at status_updated_at FROM books b LEFT JOIN series s ON s.id=b.series_id LEFT JOIN user_books ub ON ub.book_id=b.id WHERE b.id=?'
+            'SELECT
+                b.*,
+                s.id AS series_local_id,
+                s.external_api_id AS series_external_api_id,
+                s.name AS series_name,
+                ub.status,
+                ub.updated_at AS status_updated_at
+            FROM books AS b
+            LEFT JOIN series AS s
+                ON s.id = b.series_id
+            LEFT JOIN user_books AS ub
+                ON ub.book_id = b.id
+            WHERE b.id = ?'
         );
     $stmt->execute([$bookId]);
     $book = $stmt->fetch();
@@ -175,10 +227,42 @@ function savedBook(PDO $pdo, int $bookId): array
     }
     foreach (
         [
-            'authors' => 'SELECT a.id, a.external_api_id hardcover_id, a.name FROM book_authors ba JOIN authors a ON a.id=ba.author_id WHERE ba.book_id=? ORDER BY a.id',
-            'genres' => 'SELECT g.id, g.name, g.slug FROM book_genres bg JOIN genres g ON g.id=bg.genre_id WHERE bg.book_id=? ORDER BY g.id',
-            'lists' => 'SELECT l.id, l.name, l.description FROM book_lists bl JOIN lists l ON l.id=bl.lists_id WHERE bl.book_id=? ORDER BY l.name,l.id',
-            'tags' => 'SELECT t.id, t.name, t.slug FROM book_tags bt JOIN tags t ON t.id=bt.tags_id WHERE bt.book_id=? ORDER BY t.name,t.id',
+            'authors' => 'SELECT
+                a.id,
+                a.external_api_id AS hardcover_id,
+                a.name
+            FROM book_authors AS ba
+            JOIN authors AS a
+                ON a.id = ba.author_id
+            WHERE ba.book_id = ?
+            ORDER BY a.id',
+            'genres' => 'SELECT
+                g.id,
+                g.name,
+                g.slug
+            FROM book_genres AS bg
+            JOIN genres AS g
+                ON g.id = bg.genre_id
+            WHERE bg.book_id = ?
+            ORDER BY g.id',
+            'lists' => 'SELECT
+                l.id,
+                l.name,
+                l.description
+            FROM book_lists AS bl
+            JOIN lists AS l
+                ON l.id = bl.lists_id
+            WHERE bl.book_id = ?
+            ORDER BY l.name, l.id',
+            'tags' => 'SELECT
+                t.id,
+                t.name,
+                t.slug
+            FROM book_tags AS bt
+            JOIN tags AS t
+                ON t.id = bt.tags_id
+            WHERE bt.book_id = ?
+            ORDER BY t.name, t.id',
         ] as $key => $sql
     ) {
         $stmt = $pdo->prepare($sql);
@@ -188,6 +272,12 @@ function savedBook(PDO $pdo, int $bookId): array
     return normalizeSavedBook($book);
 }
 
+/**
+ * Loads a page with batched relationship queries instead of queries per card.
+ * @param PDO $pdo Active connection.
+ * @param int[] $bookIds Existing local IDs in the requested display order.
+ * @return array Normalized books in the same order as the supplied IDs.
+ */
 function savedBooks(PDO $pdo, array $bookIds): array
 {
     if (!$bookIds) {
@@ -195,7 +285,19 @@ function savedBooks(PDO $pdo, array $bookIds): array
     }
     $marks = implode(',', array_fill(0, count($bookIds), '?'));
     $stmt = $pdo->prepare(
-        "SELECT b.*, s.id series_local_id, s.external_api_id series_external_api_id, s.name series_name, ub.status, ub.updated_at status_updated_at FROM books b LEFT JOIN series s ON s.id=b.series_id LEFT JOIN user_books ub ON ub.book_id=b.id WHERE b.id IN ($marks)"
+        "SELECT
+            b.*,
+            s.id AS series_local_id,
+            s.external_api_id AS series_external_api_id,
+            s.name AS series_name,
+            ub.status,
+            ub.updated_at AS status_updated_at
+        FROM books AS b
+        LEFT JOIN series AS s
+            ON s.id = b.series_id
+        LEFT JOIN user_books AS ub
+            ON ub.book_id = b.id
+        WHERE b.id IN ($marks)"
     );
     $stmt->execute($bookIds);
     $books = [];
@@ -203,14 +305,48 @@ function savedBooks(PDO $pdo, array $bookIds): array
         $book['authors'] = $book['genres'] = $book['lists'] = $book['tags'] = [];
         $books[(int)$book['id']] = $book;
     }
-    foreach ([
-        'authors' => 'SELECT ba.book_id, a.id, a.external_api_id hardcover_id, a.name FROM book_authors ba JOIN authors a ON a.id=ba.author_id',
-        'genres' => 'SELECT bg.book_id, g.id, g.name, g.slug FROM book_genres bg JOIN genres g ON g.id=bg.genre_id',
-        'lists' => 'SELECT bl.book_id, l.id, l.name, l.description FROM book_lists bl JOIN lists l ON l.id=bl.lists_id',
-        'tags' => 'SELECT bt.book_id, t.id, t.name, t.slug FROM book_tags bt JOIN tags t ON t.id=bt.tags_id',
-    ] as $key => $sql) {
+    foreach (
+        [
+            'authors' => 'SELECT
+            ba.book_id,
+            a.id,
+            a.external_api_id AS hardcover_id,
+            a.name
+        FROM book_authors AS ba
+        JOIN authors AS a
+            ON a.id = ba.author_id',
+            'genres' => 'SELECT
+            bg.book_id,
+            g.id,
+            g.name,
+            g.slug
+        FROM book_genres AS bg
+        JOIN genres AS g
+            ON g.id = bg.genre_id',
+            'lists' => 'SELECT
+            bl.book_id,
+            l.id,
+            l.name,
+            l.description
+        FROM book_lists AS bl
+        JOIN lists AS l
+            ON l.id = bl.lists_id',
+            'tags' => 'SELECT
+            bt.book_id,
+            t.id,
+            t.name,
+            t.slug
+        FROM book_tags AS bt
+        JOIN tags AS t
+            ON t.id = bt.tags_id',
+        ] as $key => $sql
+    ) {
         $order = $key === 'authors' || $key === 'genres' ? 'id' : 'name,id';
-        $stmt = $pdo->prepare("$sql WHERE book_id IN ($marks) ORDER BY book_id,$order");
+        $stmt = $pdo->prepare(
+            "$sql
+        WHERE book_id IN ($marks)
+        ORDER BY book_id, $order"
+        );
         $stmt->execute($bookIds);
         foreach ($stmt->fetchAll() as $row) {
             $id = (int)$row['book_id'];
@@ -225,14 +361,25 @@ function savedBooks(PDO $pdo, array $bookIds): array
     return $out;
 }
 
+/**
+ * Resolves an external identifier without importing or changing a book.
+ * @param PDO $pdo Active connection.
+ * @param int $hardcoverId External book ID.
+ * @return array|null Saved book, or null if it has not been imported.
+ */
 function findSavedBookByHardcoverId(PDO $pdo, int $hardcoverId): ?array
 {
-    $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id=?');
+    $stmt = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
     $stmt->execute([(string)$hardcoverId]);
     $id = $stmt->fetchColumn();
     return $id === false ? null : savedBook($pdo, (int)$id);
 }
 
+/**
+ * Builds the read-only details response for an unsaved book.
+ * @param array $book Normalized Hardcover metadata.
+ * @return array Book with no local ID, status, custom lists, or tags.
+ */
 function externalBookResponse(array $book): array
 {
     return [
@@ -252,28 +399,47 @@ function externalBookResponse(array $book): array
     ];
 }
 
+/**
+ * Persists metadata, relationships, and reading status in one transaction.
+ * @param PDO $pdo Connection without an active transaction.
+ * @param array $book Normalized Hardcover book.
+ * @param string $status Validated reading status.
+ * @param array $sessionDetails Optional session fields for Finished or DNF.
+ * @return array Saved book in the shared response format.
+ * @throws Throwable Rolls back and rethrows if persistence or session validation fails.
+ */
 function saveBook(PDO $pdo, array $book, string $status = 'want_to_read', array $sessionDetails = []): array
 {
     $pdo->beginTransaction();
     try {
         $seriesId = null;
         if ($book['series']) {
-            $s = $pdo->prepare('SELECT id FROM series WHERE external_api_id=?');
+            $s = $pdo->prepare('SELECT id FROM series WHERE external_api_id = ?');
             $s->execute([$book['series']['id']]);
             $seriesId = $s->fetchColumn();
             if (!$seriesId) {
-                $s = $pdo->prepare('INSERT INTO series (external_api_id,name) VALUES (?,?)');
+                $s = $pdo->prepare('INSERT INTO series (external_api_id, name) VALUES (?, ?)');
                 $s->execute([$book['series']['id'], $book['series']['name']]);
                 $seriesId = (int)$pdo->lastInsertId();
             }
         }
-        $s = $pdo->prepare('SELECT id FROM books WHERE external_api_id=?');
+        $s = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
         $s->execute([$book['hardcover_id']]);
         $bookId = $s->fetchColumn();
         if (!$bookId) {
             $s =
                 $pdo->prepare(
-                    'INSERT INTO books (external_api_id,title,headline,description,cover_url,release_date,series_id,series_position) VALUES (?,?,?,?,?,?,?,?)'
+                    'INSERT INTO books (
+                        external_api_id,
+                        title,
+                        headline,
+                        description,
+                        cover_url,
+                        release_date,
+                        series_id,
+                        series_position
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
             $s->execute(
                 [
@@ -290,32 +456,35 @@ function saveBook(PDO $pdo, array $book, string $status = 'want_to_read', array 
             $bookId = (int)$pdo->lastInsertId();
         }
         foreach ($book['authors'] as $author) {
-            $s = $pdo->prepare('SELECT id FROM authors WHERE external_api_id=?');
+            $s = $pdo->prepare('SELECT id FROM authors WHERE external_api_id = ?');
             $s->execute([$author['id']]);
             $id = $s->fetchColumn();
             if (!$id) {
-                $s = $pdo->prepare('INSERT INTO authors (external_api_id,name) VALUES (?,?)');
+                $s = $pdo->prepare('INSERT INTO authors (external_api_id, name) VALUES (?, ?)');
                 $s->execute([$author['id'], $author['name']]);
                 $id = $pdo->lastInsertId();
             }
             $pdo
-                ->prepare('INSERT IGNORE INTO book_authors VALUES (?,?)')->execute([$bookId, $id]);
+                ->prepare('INSERT IGNORE INTO book_authors VALUES (?, ?)')->execute([$bookId, $id]);
         }
         foreach ($book['genres'] as $genre) {
-            $s = $pdo->prepare('SELECT id FROM genres WHERE slug=?');
+            $s = $pdo->prepare('SELECT id FROM genres WHERE slug = ?');
             $s->execute([$genre['slug']]);
             $id = $s->fetchColumn();
             if (!$id) {
-                $s = $pdo->prepare('INSERT INTO genres (name,slug) VALUES (?,?)');
+                $s = $pdo->prepare('INSERT INTO genres (name, slug) VALUES (?, ?)');
                 $s->execute([$genre['name'], $genre['slug']]);
                 $id = $pdo->lastInsertId();
             }
             $pdo
-                ->prepare('INSERT IGNORE INTO book_genres VALUES (?,?)')->execute([$bookId, $id]);
+                ->prepare('INSERT IGNORE INTO book_genres VALUES (?, ?)')->execute([$bookId, $id]);
         }
         $pdo
             ->prepare(
-                'INSERT INTO user_books (book_id,status) VALUES (?,?) ON DUPLICATE KEY UPDATE status=VALUES(status)'
+                'INSERT INTO user_books (book_id, status)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE
+                    status = VALUES(status)'
             )->execute([$bookId, $status]);
         transitionSession($pdo, (int)$bookId, $status, $sessionDetails);
         $pdo->commit();

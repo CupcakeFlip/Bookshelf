@@ -1,9 +1,23 @@
 <?php
 
+/** Made with AI */
+
 declare(strict_types=1);
+
+/**
+ * Provides the library API for browsing, saving, and removing books.
+ * Applies search, filters, sorting, and pagination, and supplies list previews.
+ * Uses shared book and session helpers to keep saved data and reading status together.
+ */
 
 require_once __DIR__ . '/../lib/books.php';
 
+/**
+ * Sends JSON and ends the request so no later handler can also write a response.
+ * @param array $payload Response data.
+ * @param int $status HTTP status code.
+ * @return never
+ */
 function respond(array $payload, int $status = 200): never
 {
     http_response_code($status);
@@ -84,10 +98,34 @@ $pdo = require __DIR__ . '/../settings/init.php';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
     if (($_GET['summary'] ?? '') === 'lists') {
-        $rows = $pdo->query('SELECT status, id, title, cover_url FROM (SELECT ub.status, b.id, b.title, b.cover_url, ROW_NUMBER() OVER (PARTITION BY ub.status ORDER BY ub.updated_at DESC, b.id) AS position FROM user_books ub JOIN books b ON b.id=ub.book_id) previews WHERE position <= 8 ORDER BY status, position')->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $pdo
+            ->query(
+                'SELECT
+                    status,
+                    id,
+                    title,
+                    cover_url
+                FROM (
+                    SELECT
+                        ub.status,
+                        b.id,
+                        b.title,
+                        b.cover_url,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY ub.status
+                            ORDER BY ub.updated_at DESC, b.id
+                        ) AS position
+                    FROM user_books AS ub
+                    JOIN books AS b
+                        ON b.id = ub.book_id
+                ) AS previews
+                WHERE position <= 8
+                ORDER BY status, position;'
+            )->fetchAll(PDO::FETCH_ASSOC);
         $lists = array_fill_keys(['want_to_read', 'reading', 'finished', 'paused', 'dnf'], []);
         foreach ($rows as $row) {
-            $lists[$row['status']][] = ['id' => (int)$row['id'], 'title' => $row['title'], 'cover_url' => $row['cover_url']];
+            $lists[$row['status']][] =
+                ['id' => (int)$row['id'], 'title' => $row['title'], 'cover_url' => $row['cover_url']];
         }
         respond(['lists' => $lists]);
     }
@@ -108,8 +146,32 @@ if ($method === 'GET') {
             'title_desc' => 'b.title IS NULL, b.title DESC, b.id',
             'release_date_desc' => 'b.release_date IS NULL, b.release_date DESC, b.id',
             'release_date_asc' => 'b.release_date IS NULL, b.release_date ASC, b.id',
-            'author_asc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) ASC, b.id',
-            'author_desc' => '(SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) IS NULL, (SELECT MIN(a2.name) FROM book_authors ba2 JOIN authors a2 ON a2.id=ba2.author_id WHERE ba2.book_id=b.id) DESC, b.id'
+            'author_asc' => '(
+                SELECT MIN(a2.name)
+                FROM book_authors AS ba2
+                JOIN authors AS a2
+                    ON a2.id = ba2.author_id
+                WHERE ba2.book_id = b.id
+            ) IS NULL, (
+                SELECT MIN(a2.name)
+                FROM book_authors AS ba2
+                JOIN authors AS a2
+                    ON a2.id = ba2.author_id
+                WHERE ba2.book_id = b.id
+            ) ASC, b.id',
+            'author_desc' => '(
+                SELECT MIN(a2.name)
+                FROM book_authors AS ba2
+                JOIN authors AS a2
+                    ON a2.id = ba2.author_id
+                WHERE ba2.book_id = b.id
+            ) IS NULL, (
+                SELECT MIN(a2.name)
+                FROM book_authors AS ba2
+                JOIN authors AS a2
+                    ON a2.id = ba2.author_id
+                WHERE ba2.book_id = b.id
+            ) DESC, b.id'
         ];
     if ($status !== '' && !in_array($status, $allowed, true)) {
         respond(['error' => 'status is invalid.'], 422);
@@ -149,31 +211,58 @@ if ($method === 'GET') {
         }
     }
     $categoryValues = array_values(array_unique($categoryValues));
-    $sql = 'SELECT b.id FROM books b JOIN user_books ub ON ub.book_id=b.id';
+    $sql = 'SELECT b.id
+    FROM books AS b
+    JOIN user_books AS ub
+        ON ub.book_id = b.id';
     $conditions = [];
     $params = [];
     if ($q !== '') {
         $conditions[] =
-            '(b.title LIKE ? OR EXISTS (SELECT 1 FROM book_authors baq JOIN authors aq ON aq.id=baq.author_id WHERE baq.book_id=b.id AND aq.name LIKE ?))';
+            '(
+                b.title LIKE ?
+                OR EXISTS (
+                    SELECT 1
+                    FROM book_authors AS baq
+                    JOIN authors AS aq
+                        ON aq.id = baq.author_id
+                    WHERE baq.book_id = b.id
+                        AND aq.name LIKE ?
+                )
+            )';
         $params[] = '%' . $q . '%';
         $params[] = '%' . $q . '%';
     }
     if ($status !== '') {
-        $conditions[] = 'ub.status=?';
+        $conditions[] = 'ub.status = ?';
         $params[] = $status;
     }
     if ($genreIds) {
         $marks = implode(',', array_fill(0, count($genreIds), '?'));
-        $conditions[] = "EXISTS (SELECT 1 FROM book_genres bgf WHERE bgf.book_id=b.id AND bgf.genre_id IN ($marks))";
+        $conditions[] = "EXISTS (
+            SELECT 1
+            FROM book_genres AS bgf
+            WHERE bgf.book_id = b.id
+                AND bgf.genre_id IN ($marks)
+        )";
         foreach ($genreIds as $genreId) {
             $params[] = $genreId;
         }
     }
+    // Each category adds an AND condition; its member genres are alternatives (OR).
+    // EXISTS avoids duplicate books when several genres match.
     foreach ($categoryValues as $category) {
         $names = BOOK_GENRE_CATEGORIES[$category];
         $marks = implode(',', array_fill(0, count($names), '?'));
         $conditions[] =
-            "EXISTS (SELECT 1 FROM book_genres bgc JOIN genres gc ON gc.id=bgc.genre_id WHERE bgc.book_id=b.id AND gc.name IN ($marks))";
+            "EXISTS (
+                SELECT 1
+                FROM book_genres AS bgc
+                JOIN genres AS gc
+                    ON gc.id = bgc.genre_id
+                WHERE bgc.book_id = b.id
+                    AND gc.name IN ($marks)
+            )";
         foreach ($names as $name) {
             $params[] = $name;
         }
@@ -181,6 +270,7 @@ if ($method === 'GET') {
     if ($conditions) {
         $sql .= ' WHERE ' . implode(' AND ', $conditions);
     }
+    // Count and page queries share the same filters, so pagination matches the cards.
     $countSql = preg_replace('/^SELECT b.id/', 'SELECT COUNT(*)', $sql, 1);
     $count = $pdo->prepare($countSql);
     $count->execute($params);
@@ -195,7 +285,15 @@ if ($method === 'GET') {
     $s->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
     $s->bindValue(count($params) + 2, ($page - 1) * $limit, PDO::PARAM_INT);
     $s->execute();
-    respond(['books' => savedBooks($pdo, array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN))), 'page' => $page, 'limit' => $limit, 'total' => $total, 'totalPages' => $totalPages]);
+    respond(
+        [
+            'books' => savedBooks($pdo, array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN))),
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'totalPages' => $totalPages
+        ]
+    );
 }
 if ($method === 'DELETE') {
     $id = filter_var($_GET['hardcover_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -210,7 +308,7 @@ if ($method === 'DELETE') {
     try {
         transitionSession($pdo, $bookId, 'want_to_read');
         $pdo
-            ->prepare('DELETE FROM user_books WHERE book_id=?')->execute([$bookId]);
+            ->prepare('DELETE FROM user_books WHERE book_id = ?')->execute([$bookId]);
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -235,14 +333,14 @@ if ($id === false) {
     respond(['error' => 'hardcover_id must be a positive integer.'], 400);
 }
 $status = $payload['status'] ?? 'want_to_read';
-if (!is_string($status) || !in_array($status, ['want_to_read', 'reading', 'finished', 'paused', 'dnf'], true)) {
+if (!in_array($status, ['want_to_read', 'reading', 'finished', 'paused', 'dnf'], true)) {
     respond(
         ['error' => 'status is invalid.'],
         422
     );
 }
 $details = is_array($payload['session'] ?? null) ? $payload['session'] : [];
-$existing = $pdo->prepare('SELECT id FROM books WHERE external_api_id=?');
+$existing = $pdo->prepare('SELECT id FROM books WHERE external_api_id = ?');
 $existing->execute([(string)$id]);
 $bookId = $existing->fetchColumn();
 if ($bookId !== false) {
@@ -251,7 +349,10 @@ if ($bookId !== false) {
     try {
         $pdo
             ->prepare(
-                'INSERT INTO user_books (book_id,status) VALUES (?,?) ON DUPLICATE KEY UPDATE status=VALUES(status)'
+                'INSERT INTO user_books (book_id, status)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE
+                    status = VALUES(status)'
             )
             ->execute([$bookId, $status]);
         transitionSession($pdo, $bookId, $status, $details);

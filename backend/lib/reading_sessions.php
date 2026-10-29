@@ -1,4 +1,15 @@
 <?php
+/** Made with AI */
+
+/**
+ * Handles reading sessions and reading history.
+ *
+ * Validates reading session data, manages reading status changes,
+ * and stores information about reading dates, formats, and progress.
+ * Also keeps book statuses synchronized with their reading sessions.
+ *
+ * Used by the books and reading sessions API endpoints.
+ */
 
 declare(strict_types=1);
 
@@ -6,7 +17,11 @@ const SESSION_STATUSES = ['reading', 'paused', 'finished', 'dnf', 'abandoned'];
 const SESSION_FORMATS = ['physical', 'ebook', 'audiobook'];
 const DATE_PRECISIONS = ['day', 'month', 'year', 'unknown'];
 
-/** Validates the wire-format date before it is normalized for storage. */
+/**
+ * Checks a full wire-format date before precision is applied.
+ * @param mixed $value Candidate YYYY-MM-DD value.
+ * @return bool Whether the date exists in the calendar.
+ */
 function validSessionDate(mixed $value): bool
 {
     if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
@@ -16,7 +31,12 @@ function validSessionDate(mixed $value): bool
     return $date !== false && DateTimeImmutable::getLastErrors() === false;
 }
 
-/** Resolves an external Hardcover ID to the local canonical book ID. */
+/**
+ * Resolves an external Hardcover ID to a canonical local book.
+ * @param PDO $pdo Active connection.
+ * @param mixed $hardcoverId Candidate external ID.
+ * @return int|null Local ID, or null for invalid or missing books.
+ */
 function sessionBookId(PDO $pdo, mixed $hardcoverId): ?int
 {
     if (!is_scalar($hardcoverId) || !preg_match('/^[1-9][0-9]*$/', (string)$hardcoverId)) {
@@ -28,7 +48,12 @@ function sessionBookId(PDO $pdo, mixed $hardcoverId): ?int
     return $id === false ? null : (int)$id;
 }
 
-/** Returns formats joined to one historical reading session in stable order. */
+/**
+ * Loads the formats recorded for a historical reading attempt.
+ * @param PDO $pdo Active connection.
+ * @param int $sessionId Local session ID.
+ * @return string[] Sorted format names.
+ */
 function sessionFormats(PDO $pdo, int $sessionId): array
 {
     $stmt = $pdo->prepare('SELECT format FROM reading_session_formats WHERE reading_session_id = ? ORDER BY format');
@@ -36,12 +61,23 @@ function sessionFormats(PDO $pdo, int $sessionId): array
     return array_column($stmt->fetchAll(), 'format');
 }
 
-/** Loads one session and expands its foreign-key values for JSON responses. */
+/**
+ * Expands one session for JSON responses.
+ * @param PDO $pdo Active connection.
+ * @param int $sessionId Local session ID.
+ * @return array|null Session with formats and Hardcover ID, or null.
+ */
 function sessionData(PDO $pdo, int $sessionId): ?array
 {
     $stmt =
         $pdo->prepare(
-            'SELECT rs.*, b.external_api_id AS hardcover_id FROM reading_sessions rs JOIN books b ON b.id = rs.book_id WHERE rs.id = ?'
+            'SELECT
+                rs.*,
+                b.external_api_id AS hardcover_id
+            FROM reading_sessions AS rs
+            JOIN books AS b
+                ON b.id = rs.book_id
+            WHERE rs.id = ?'
         );
     $stmt->execute([$sessionId]);
     $session = $stmt->fetch();
@@ -55,8 +91,11 @@ function sessionData(PDO $pdo, int $sessionId): ?array
 }
 
 /**
- * Validates a complete or partial session payload, including cross-field rules
- * for dates, DNF progress, and the format required by a progress unit.
+ * Validates API fields and cross-field date, format, and DNF rules.
+ * @param array $payload Session fields only, without response identifiers.
+ * @param bool $partial Whether fields may be omitted before merging with an existing session.
+ * @return array Validated fields; dates are normalized separately.
+ * @throws InvalidArgumentException If a field or combination is invalid.
  */
 function validateSessionPayload(array $payload, bool $partial = false): array
 {
@@ -84,6 +123,11 @@ function validateSessionPayload(array $payload, bool $partial = false): array
     if (isset($payload['status']) && !in_array($payload['status'], SESSION_STATUSES, true)) {
         throw new InvalidArgumentException('status is invalid.');
     }
+    if (
+        isset($payload['dnf_progress_type']) &&
+        !in_array($payload['dnf_progress_type'], ['percentage', 'page', 'time'], true)) {
+        throw new InvalidArgumentException('dnf_progress_type is invalid.');
+    }
     foreach (['start_date_precision', 'finish_date_precision'] as $key) {
         if (isset($payload[$key]) && !in_array($payload[$key], DATE_PRECISIONS, true)) {
             throw new InvalidArgumentException("$key is invalid.");
@@ -94,7 +138,8 @@ function validateSessionPayload(array $payload, bool $partial = false): array
             throw new InvalidArgumentException("$key must be a valid YYYY-MM-DD date or null.");
         }
     }
-    foreach ([['start_date', 'start_date_precision'], ['finish_date', 'finish_date_precision']] as [$date, $precision]) {
+    foreach ([['start_date', 'start_date_precision'], ['finish_date', 'finish_date_precision']] as [$date, $precision])
+    {
         if (!$partial || array_key_exists($date, $payload) || array_key_exists($precision, $payload)) {
             $dateValue = $payload[$date] ?? null;
             $precisionValue = $payload[$precision] ?? 'unknown';
@@ -107,7 +152,7 @@ function validateSessionPayload(array $payload, bool $partial = false): array
         if (!is_array($payload['formats'])) {
             throw new InvalidArgumentException('formats must be an array.');
         }
-        foreach (array_unique($payload['formats']) as $format) {
+        foreach ($payload['formats'] as $format) {
             if (!is_string($format) || !in_array($format, SESSION_FORMATS, true)) {
                 throw new InvalidArgumentException('format is invalid.');
             }
@@ -181,10 +226,15 @@ function validateSessionPayload(array $payload, bool $partial = false): array
     return $payload;
 }
 
-/** Converts month/year precision into canonical first-of-period SQL dates. */
+/**
+ * Stores month/year precision as the first day of that period.
+ * @param array $data Validated session fields.
+ * @return array Fields with normalized dates; unknown dates become null.
+ */
 function normalizeSessionDates(array $data): array
 {
-    foreach ([['start_date', 'start_date_precision'], ['finish_date', 'finish_date_precision']] as [$date, $precision]) {
+    foreach ([['start_date', 'start_date_precision'], ['finish_date', 'finish_date_precision']] as [$date, $precision])
+    {
         if (($data[$precision] ?? 'unknown') === 'unknown') {
             $data[$date] = null;
         } elseif (($data[$precision] ?? null) === 'month') {
@@ -196,7 +246,13 @@ function normalizeSessionDates(array $data): array
     return $data;
 }
 
-/** Locks the canonical book row so related status/session changes serialize. */
+/**
+ * Serializes related status/session changes using the canonical book row.
+ * @param PDO $pdo Connection inside a caller-owned transaction.
+ * @param int $bookId Local book ID.
+ * @return void
+ * @throws RuntimeException If the book no longer exists.
+ */
 function lockBook(PDO $pdo, int $bookId): void
 {
     $stmt = $pdo->prepare('SELECT id FROM books WHERE id = ? FOR UPDATE');
@@ -206,7 +262,13 @@ function lockBook(PDO $pdo, int $bookId): void
     }
 }
 
-/** Keeps the current user_books status consistent with the active session. */
+/**
+ * Gives an active session priority when updating the current library status.
+ * @param PDO $pdo Connection inside a transaction with the book locked.
+ * @param int $bookId Local book ID.
+ * @param string|null $preferred Fallback status when no active session exists.
+ * @return void
+ */
 function reconcileBookStatus(PDO $pdo, int $bookId, ?string $preferred = null): void
 {
     $active = activeSession($pdo, $bookId);
@@ -225,7 +287,13 @@ function reconcileBookStatus(PDO $pdo, int $bookId, ?string $preferred = null): 
     }
 }
 
-/** Replaces session formats as a set; the caller provides transaction scope. */
+/**
+ * Replaces session formats as a set without changing owned formats.
+ * @param PDO $pdo Connection inside a caller-owned transaction.
+ * @param int $sessionId Local session ID.
+ * @param string[] $formats Validated format values.
+ * @return void
+ */
 function replaceSessionFormats(PDO $pdo, int $sessionId, array $formats): void
 {
     $pdo->prepare('DELETE FROM reading_session_formats WHERE reading_session_id = ?')->execute([$sessionId]);
@@ -235,23 +303,47 @@ function replaceSessionFormats(PDO $pdo, int $sessionId, array $formats): void
     }
 }
 
-/** Returns the newest active session, where active means reading or paused. */
+/**
+ * Finds the newest reading or paused attempt.
+ * @param PDO $pdo Active connection.
+ * @param int $bookId Local book ID.
+ * @return array|null Expanded active session, or null.
+ */
 function activeSession(PDO $pdo, int $bookId): ?array
 {
     $stmt =
         $pdo->prepare(
-            "SELECT id FROM reading_sessions WHERE book_id = ? AND status IN ('reading', 'paused') ORDER BY id DESC LIMIT 1"
+            "SELECT id
+            FROM reading_sessions
+            WHERE book_id = ?
+                AND status IN ('reading', 'paused')
+            ORDER BY id DESC
+            LIMIT 1"
         );
     $stmt->execute([$bookId]);
     $id = $stmt->fetchColumn();
     return $id === false ? null : sessionData($pdo, (int)$id);
 }
 
+/**
+ * Uses the PHP installation timezone for automatic start dates.
+ * @return string Today as YYYY-MM-DD.
+ */
 function sessionToday(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone(date_default_timezone_get())))->format('Y-m-d');
 }
 
+/**
+ * Applies the session changes associated with a library status selection.
+ * Reading starts or resumes an attempt; want_to_read abandons an active attempt.
+ * @param PDO $pdo Connection inside a caller-owned transaction.
+ * @param int $bookId Local book ID.
+ * @param string $status Validated library status.
+ * @param array $details Optional Finished or DNF session fields.
+ * @return void
+ * @throws InvalidArgumentException If the supplied session details are invalid.
+ */
 function transitionSession(PDO $pdo, int $bookId, string $status, array $details = []): void
 {
     lockBook($pdo, $bookId);
@@ -263,7 +355,13 @@ function transitionSession(PDO $pdo, int $bookId, string $status, array $details
         } elseif (!$active) {
             $stmt =
                 $pdo->prepare(
-                    "INSERT INTO reading_sessions (book_id, status, start_date, start_date_precision) VALUES (?, 'reading', ?, 'day')"
+                    "INSERT INTO reading_sessions (
+                        book_id,
+                        status,
+                        start_date,
+                        start_date_precision
+                    )
+                    VALUES (?, 'reading', ?, 'day')"
                 );
             $stmt->execute([$bookId, sessionToday()]);
         }
@@ -306,7 +404,17 @@ function transitionSession(PDO $pdo, int $bookId, string $status, array $details
         } else {
             $stmt =
                 $pdo->prepare(
-                    'INSERT INTO reading_sessions (book_id, status, start_date, start_date_precision, finish_date, finish_date_precision, dnf_progress_type, dnf_progress_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                    'INSERT INTO reading_sessions (
+                        book_id,
+                        status,
+                        start_date,
+                        start_date_precision,
+                        finish_date,
+                        finish_date_precision,
+                        dnf_progress_type,
+                        dnf_progress_value
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
             $stmt->execute(
                 [

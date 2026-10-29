@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { optimizedCoverUrl, optimizedCoverSrcset } from "./coverImages";
+/* Made with AI */
+import {optimizedCoverSrcset, optimizedCoverUrl} from "@/utils/coverImages";
+import {describe, expect, it} from "vitest";
 
 describe("optimized cover URLs", () => {
     const original = "https://assets.hardcover.app/covers/book.jpg?token=a&size=large";
@@ -20,6 +21,7 @@ describe("optimized cover URLs", () => {
         expect(optimizedCoverSrcset("")).toBe("");
         expect(optimizedCoverUrl("https://example.com/a.jpg")).toBe("https://example.com/a.jpg");
         expect(optimizedCoverSrcset("https://example.com/a.jpg")).toBe("");
-        expect(optimizedCoverUrl("https://assets.hardcover.app:444/a.jpg")).toBe("https://assets.hardcover.app:444/a.jpg");
+        expect(optimizedCoverUrl("https://assets.hardcover.app:444/a.jpg"))
+            .toBe("https://assets.hardcover.app:444/a.jpg");
     });
 });

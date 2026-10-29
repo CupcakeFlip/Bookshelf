@@ -1,12 +1,20 @@
+<!--
+    Displays saved books for the reading status selected in the route.
+    Owns the list filters and pagination and uses shared collection components
+    with the books API to load and refresh the matching books.
+-->
 <script setup>
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
-import {useRoute} from "vue-router";
-import Navbar from "@/components/Navbar.vue";
 import BookCollectionContent from "@/components/BookCollectionContent.vue";
 import BookCollectionFilters from "@/components/BookCollectionFilters.vue";
+import Navbar from "@/components/Navbar.vue";
 import Pagination from "@/components/Pagination.vue";
-import {getSavedPageLimit, savePageLimit} from "@/utils/pagination";
+import {scrollToCollection} from "@/utils/collectionScroll";
 import {createLatestRequest} from "@/utils/latestRequest";
+import {getSavedPageLimit, savePageLimit} from "@/utils/pagination";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {useRoute} from "vue-router";
+
+const collectionElement = ref(null);
 
 const route = useRoute(),
     names = {
@@ -33,7 +41,13 @@ const route = useRoute(),
     });
 const requests = createLatestRequest();
 
-async function fetchBooks() {
+/**
+ * Fetches one server-filtered page while keeping existing cards visible.
+ * Only the latest request can commit results or clear the loading indicator.
+ * @param {boolean} [scroll=false] Scroll after a successful page or size change.
+ * @returns {Promise<void>} Errors leave the last loaded page visible.
+ */
+async function fetchBooks(scroll = false) {
     requests.abort();
     if (!title.value) {
         books.value = [];
@@ -41,37 +55,50 @@ async function fetchBooks() {
         return;
     }
     const request = requests.start();
+    let loaded = false;
     loading.value = true;
     error.value = "";
     try {
         const next = filters.value;
-        const p = new URLSearchParams({
+        const params = new URLSearchParams({
             status: status.value,
             q: next.q,
             sort: next.sort,
             page: String(page.value),
             limit: String(limit.value),
         });
-        if (next.categories?.length)
-            p.set("categories", next.categories.join(","));
-        else if (next.genres?.length) p.set("genres", next.genres.join(","));
-        const r = await fetch(`/api/books.php?${p}`, {
+        if (next.categories?.length) {
+            params.set("categories", next.categories.join(","));
+        } else if (next.genres?.length) {
+            params.set("genres", next.genres.join(","));
+        }
+        const response = await fetch(`/api/books.php?${params}`, {
                 signal: request.signal,
             }),
-            d = await r.json().catch(() => ({}));
-        if (!requests.isCurrent(request)) return;
-        if (!r.ok) throw Error(d.error || "Could not load this list.");
-        books.value = d.books;
-        page.value = d.page;
-        loadedPage.value = d.page;
-        totalPages.value = d.totalPages;
-    } catch (e) {
-        if (requests.isCurrent(request) && e.name !== "AbortError") {
-            error.value = e.message;
+            payload = await response.json().catch(() => ({}));
+        if (!requests.isCurrent(request)) {
+            return;
+        }
+        if (!response.ok) {
+            throw Error(payload.error || "Could not load this list.");
+        }
+        books.value = payload.books;
+        page.value = payload.page;
+        loadedPage.value = payload.page;
+        totalPages.value = payload.totalPages;
+        loaded = true;
+    } catch (errorCause) {
+        if (requests.isCurrent(request) && errorCause.name !== "AbortError") {
+            error.value = errorCause.message;
             page.value = loadedPage.value;
         }
     } finally {
-        if (requests.isCurrent(request)) loading.value = false;
+        if (requests.isCurrent(request)) {
+            loading.value = false;
+        }
+    }
+    if (loaded && scroll) {
+        await scrollToCollection(collectionElement.value, () => requests.isCurrent(request));
     }
 }
 
@@ -83,14 +110,14 @@ function changeFilters(next) {
 
 function changePage(next) {
     page.value = next;
-    fetchBooks();
+    fetchBooks(true);
 }
 
 function changeLimit(next) {
     limit.value = next;
     savePageLimit(next);
     page.value = 1;
-    fetchBooks();
+    fetchBooks(true);
 }
 
 const refreshBooks = () => fetchBooks();
@@ -118,25 +145,32 @@ onUnmounted(() => {
 </script>
 <template>
     <Navbar/>
-    <main class="container py-4">
+    <main class="container-xl py-4">
         <h1 v-if="title" class="mb-4">{{ title }}</h1>
         <p v-if="!title" class="alert alert-danger">
             This reading list does not exist.
         </p>
         <template v-else>
             <BookCollectionFilters :status="status" @change="changeFilters"/>
-            <Pagination :limit="limit"
+            <Pagination :disabled="loading"
+                :limit="limit"
                 :page="page"
                 :total-pages="totalPages"
-                :disabled="loading"
                 show-page-size
                 @page-change="changePage"
                 @limit-change="changeLimit"/>
-            <BookCollectionContent :books="books" :loading="loading" :error="error" :skeleton-count="limit" label="Reading list books" @status-change="refreshBooks" />
+            <div ref="collectionElement" class="book-collection">
+                <BookCollectionContent :books="books"
+                    :error="error"
+                    :loading="loading"
+                    :skeleton-count="limit"
+                    label="Reading list books"
+                    @status-change="refreshBooks"/>
+            </div>
             <Pagination v-if="totalPages > 1 && books.length"
+                :disabled="loading"
                 :page="page"
                 :total-pages="totalPages"
-                :disabled="loading"
                 @page-change="changePage"/>
         </template>
     </main>
