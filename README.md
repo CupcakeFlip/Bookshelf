@@ -2,8 +2,6 @@
 
 # Bookshelf
 
-[Architecture and review notes](docs/architecture.md) explain the data flow, validation commands, and known limitations.
-
 **Dansk** · [Read in English](#bookshelf---english)
 
 Personligt bog- og lydbogsbibliotek til at finde, gemme, organisere og filtrere bøger. Bygget med Vue, PHP og MariaDB.
