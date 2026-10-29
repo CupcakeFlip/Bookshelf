@@ -1,4 +1,8 @@
+<!-- Written by AI -->
+
 # Bookshelf
+
+[Architecture and review notes](docs/architecture.md) explain the data flow, validation commands, and known limitations.
 
 **Dansk** · [Read in English](#bookshelf---english)
 
@@ -47,16 +51,9 @@ npm run docker:status
 npm run docker:logs
 ```
 
-MariaDB initialiseres første gang, den navngivne volume oprettes. `database/schema.sql` opretter tabellerne for bøger,
-serier, forfattere, genrer og brugerstatus. Ved ændringer i det lokale schema skal volumen nulstilles, da der ikke
-bruges generelle migrationer til schemaændringer:
-
-```powershell
-docker compose down -v
-npm run docker:start
-```
-
-**Advarsel:** `docker compose down -v` sletter data i projektets Docker-volumes, herunder den lokale database.
+MariaDB is initialized from `database/schema.sql` only when its volume is first created.
+Existing databases have targeted scripts in `database/migrations/`. Back up data and
+review the applicable scripts before running them manually; code updates do not require a reset.
 
 PHP-forbindelsen bruger miljøvariablerne fra `.env` og PDO med `utf8mb4`. Databaseværten inde i Docker er `mariadb`.
 
@@ -90,7 +87,9 @@ Content-Type: application/json
 
 PHP bruger kun Hardcover-ID'et fra requesten og henter de autoritative bogdetaljer på serveren. Nye bøger får status
 `want_to_read`. Gentagne POST-kald opretter ikke dubletter. Hvis bogen allerede findes i databasen, genbruges den
-eksisterende bog og dens brugerstatus.
+eksisterende bog.
+
+The requested status is applied (`want_to_read` when omitted).
 
 ## Tests
 
@@ -175,16 +174,9 @@ npm run docker:status
 npm run docker:logs
 ```
 
-MariaDB is initialized when its named volume is first created. `database/schema.sql` creates tables for books, series,
-authors, genres, and user statuses. Local schema changes require resetting the volume, since general schema migrations
-are not used:
-
-```powershell
-docker compose down -v
-npm run docker:start
-```
-
-**Warning:** `docker compose down -v` deletes data in the project's Docker volumes, including the local database.
+MariaDB is initialized from `database/schema.sql` only when its volume is first created.
+Existing databases have targeted scripts in `database/migrations/`. Back up data and
+review the applicable scripts before running them manually; code updates do not require a reset.
 
 The PHP connection uses environment variables from `.env` and PDO with `utf8mb4`. The database hostname inside Docker is
 `mariadb`.
@@ -219,7 +211,7 @@ Content-Type: application/json
 
 PHP uses only the Hardcover ID from the request and fetches authoritative book details on the server. New books receive
 the `want_to_read` status. Repeated POST requests do not create duplicates. If the book already exists in the database,
-the existing book and its user status are reused.
+the existing book is reused and the requested status is applied (`want_to_read` when omitted).
 
 ## Tests
 

@@ -1,6 +1,13 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
+
+/**
+ * Serves cached WebP covers requested by the frontend image helpers.
+ * Uses shared image processing for supported Hardcover URLs and sizes,
+ * and redirects to the original cover when a cached version cannot be created.
+ */
 
 require_once __DIR__ . '/../lib/cover_images.php';
 

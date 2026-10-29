@@ -1,37 +1,65 @@
-// @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createApp, h, nextTick } from "vue";
+/* Made with AI */
+import {scrollToCollection} from "@/utils/collectionScroll";
+import Frontpage from "@/views/Frontpage.vue";
 import LibraryView from "@/views/LibraryView.vue";
 import ListDetailView from "@/views/ListDetailView.vue";
-import Frontpage from "@/views/Frontpage.vue";
-import { scrollToCollection } from "@/utils/collectionScroll";
+// @vitest-environment jsdom
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import {createApp, h, nextTick} from "vue";
 
-vi.mock("vue-router", () => ({ useRoute: () => ({ params: { status: "reading" } }) }));
-vi.mock("@/components/Navbar.vue", () => ({ default: { render: () => null } }));
-vi.mock("@/components/BookCollectionFilters.vue", () => ({ default: {
-    emits: ["change"],
-    render() { return h("button", { class: "test-filter", onClick: () => this.$emit("change", { q: "new", sort: "recently_updated_desc" }) }, "Filter"); },
-} }));
-vi.mock("@/components/BookGrid.vue", () => ({ default: {
-    props: ["books"], render() { return h("div", { class: "test-books" }, this.books.map((book) => book.title).join(",")); },
-} }));
+vi.mock("vue-router", () => ({useRoute: () => ({params: {status: "reading"}})}));
+vi.mock("@/components/Navbar.vue", () => ({default: {render: () => null}}));
+vi.mock("@/components/BookCollectionFilters.vue", () => ({
+    default: {
+        emits: ["change"],
+        render() {
+            return h("button",
+                {class: "test-filter", onClick: () => this.$emit("change", {q: "new", sort: "recently_updated_desc"})},
+                "Filter");
+        },
+    }
+}));
+vi.mock("@/components/BookGrid.vue", () => ({
+    default: {
+        props: ["books"], render() {
+            return h("div", {class: "test-books"}, this.books.map((book) => book.title).join(","));
+        },
+    }
+}));
 
 let app;
 let frames;
 let scroll;
+
 async function flush() {
-    for (let i = 0; i < 8; i++) { await Promise.resolve(); await nextTick(); }
+    for (let i = 0; i < 8; i++) {
+        await Promise.resolve();
+        await nextTick();
+    }
 }
+
 async function paint() {
     for (let i = 0; i < 2; i++) {
         const callbacks = frames.splice(0);
-        for (const callback of callbacks) callback();
+        for (const callback of callbacks) {
+            callback();
+        }
         await flush();
     }
 }
+
 function response(page = 1, ok = true) {
-    return { ok, json: async () => ({ books: [{ hardcover_id: page, title: `Page ${page} book` }], page, totalPages: 3, hasNext: true }) };
+    return {
+        ok,
+        json: async () => ({
+            books: [{hardcover_id: page, title: `Page ${page} book`}],
+            page,
+            totalPages: 3,
+            hasNext: true
+        })
+    };
 }
+
 async function mount(component) {
     const host = document.createElement("div");
     document.body.append(host);
@@ -40,18 +68,26 @@ async function mount(component) {
     await flush();
     return host;
 }
+
 function button(text, host) {
     return [...host.querySelectorAll("button")].find((button) => button.textContent.trim() === text);
 }
+
 function deferred() {
     let resolve;
-    const promise = new Promise((done) => { resolve = done; });
-    return { promise, resolve };
+    const promise = new Promise((done) => {
+        resolve = done;
+    });
+    return {promise, resolve};
 }
+
 beforeEach(() => {
     frames = [];
     scroll = vi.fn();
-    vi.stubGlobal("requestAnimationFrame", (callback) => { frames.push(callback); return frames.length; });
+    vi.stubGlobal("requestAnimationFrame", (callback) => {
+        frames.push(callback);
+        return frames.length;
+    });
     vi.stubGlobal("fetch", vi.fn(async () => response()));
     Element.prototype.scrollIntoView = scroll;
     localStorage.clear();
@@ -83,7 +119,7 @@ describe.each([
         expect(host.querySelector(".test-books").textContent).toContain("Page 2 book");
         expect(scroll).not.toHaveBeenCalled();
         await paint();
-        expect(scroll).toHaveBeenCalledExactlyOnceWith({ behavior: "instant", block: "start" });
+        expect(scroll).toHaveBeenCalledExactlyOnceWith({behavior: "instant", block: "start"});
         expect(scroll.mock.contexts[0]).toBe(host.querySelector(".book-collection"));
     });
 
@@ -137,20 +173,21 @@ describe.each([
 });
 
 describe("collection scroll boundaries", () => {
-    it.each([LibraryView, ListDetailView])("does not scroll for filter changes but does for page-size changes", async (component) => {
-        const host = await mount(component);
-        host.querySelector(".test-filter").click();
-        await flush();
-        await paint();
-        expect(scroll).not.toHaveBeenCalled();
-        const size = host.querySelector("#books-page-size");
-        size.value = "12";
-        size.dispatchEvent(new Event("change", { bubbles: true }));
-        await flush();
-        await paint();
-        expect(scroll).toHaveBeenCalledTimes(1);
-        expect(fetch.mock.calls.at(-1)[0]).toContain("limit=12");
-    });
+    it.each([LibraryView, ListDetailView])("does not scroll for filter changes but does for page-size changes",
+        async (component) => {
+            const host = await mount(component);
+            host.querySelector(".test-filter").click();
+            await flush();
+            await paint();
+            expect(scroll).not.toHaveBeenCalled();
+            const size = host.querySelector("#books-page-size");
+            size.value = "12";
+            size.dispatchEvent(new Event("change", {bubbles: true}));
+            await flush();
+            await paint();
+            expect(scroll).toHaveBeenCalledTimes(1);
+            expect(fetch.mock.calls.at(-1)[0]).toContain("limit=12");
+        });
 
     it("ignores a missing or disconnected target", async () => {
         const missing = scrollToCollection(null, () => true);

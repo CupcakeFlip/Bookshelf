@@ -1,73 +1,78 @@
+# Made with AI
+
+# Connects the PHP API, MariaDB database, and phpMyAdmin for local development.
+# Mounts backend code and the initial schema, and keeps database and cover
+# cache data in persistent volumes between container restarts.
 services:
-  php:
-    # Apache serves the PHP API; the backend is mounted for local development.
-    build:
-      context: .
-      dockerfile: _docker/php/Dockerfile
-    container_name: bookshelf-php
-    ports:
-      - "${PHP_PORT:-8000}:80"
-    volumes:
-      - ./backend:/var/www/html
-      - cover_cache:/var/cache/bookshelf/covers
-    environment:
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      HARDCOVER_API_TOKEN: ${HARDCOVER_API_TOKEN:-}
-    depends_on:
-      mariadb:
-        # The schema is applied on first initialization and data persists in the named volume.
-        condition: service_healthy
-    networks:
-      - bookshelf
+    php:
+        # Apache serves the PHP API; the backend is mounted for local development.
+        build:
+            context: .
+            dockerfile: _docker/php/Dockerfile
+        container_name: bookshelf-php
+        ports:
+            - "${PHP_PORT:-8000}:80"
+        volumes:
+            - ./backend:/var/www/html
+            - cover_cache:/var/cache/bookshelf/covers
+        environment:
+            DB_HOST: mariadb
+            DB_PORT: 3306
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
+            HARDCOVER_API_TOKEN: ${HARDCOVER_API_TOKEN:-}
+        depends_on:
+            mariadb:
+                # The schema is applied on first initialization and data persists in the named volume.
+                condition: service_healthy
+        networks:
+            - bookshelf
 
-  mariadb:
-    image: mariadb:11.4
-    container_name: bookshelf-mariadb
-    restart: unless-stopped
-    ports:
-      - "${DB_PORT:-3306}:3306"
-    environment:
-      MARIADB_DATABASE: ${DB_DATABASE}
-      MARIADB_USER: ${DB_USERNAME}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - mariadb_data:/var/lib/mysql
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - bookshelf
+    mariadb:
+        image: mariadb:11.4
+        container_name: bookshelf-mariadb
+        restart: unless-stopped
+        ports:
+            - "${DB_PORT:-3306}:3306"
+        environment:
+            MARIADB_DATABASE: ${DB_DATABASE}
+            MARIADB_USER: ${DB_USERNAME}
+            MARIADB_PASSWORD: ${DB_PASSWORD}
+            MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+        volumes:
+            - mariadb_data:/var/lib/mysql
+            - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+        healthcheck:
+            test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        networks:
+            - bookshelf
 
-  phpmyadmin:
-    # Optional database administration UI connected to the internal MariaDB service.
-    image: phpmyadmin:5.2.2-apache
-    container_name: bookshelf-phpmyadmin
-    restart: unless-stopped
-    ports:
-      - "${PHPMYADMIN_PORT:-8080}:80"
-    environment:
-      PMA_HOST: mariadb
-      PMA_PORT: 3306
-      PMA_USER: ${DB_USERNAME}
-      PMA_PASSWORD: ${DB_PASSWORD}
-    depends_on:
-      mariadb:
-        condition: service_healthy
-    networks:
-      - bookshelf
+    phpmyadmin:
+        # Optional database administration UI connected to the internal MariaDB service.
+        image: phpmyadmin:5.2.2-apache
+        container_name: bookshelf-phpmyadmin
+        restart: unless-stopped
+        ports:
+            - "${PHPMYADMIN_PORT:-8080}:80"
+        environment:
+            PMA_HOST: mariadb
+            PMA_PORT: 3306
+            PMA_USER: ${DB_USERNAME}
+            PMA_PASSWORD: ${DB_PASSWORD}
+        depends_on:
+            mariadb:
+                condition: service_healthy
+        networks:
+            - bookshelf
 
 volumes:
-  mariadb_data:
-  cover_cache:
+    mariadb_data:
+    cover_cache:
 
 networks:
-  bookshelf:
-    driver: bridge
+    bookshelf:
+        driver: bridge

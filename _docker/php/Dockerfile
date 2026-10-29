@@ -1,3 +1,8 @@
+# Made with AI
+
+# Builds the Apache and PHP image used to serve the Bookshelf backend.
+# Installs database, HTTP, and image-processing support, sets the timezone,
+# and prepares the writable directory used by the cover cache.
 FROM php:8.4-apache
 
 RUN apt-get update \

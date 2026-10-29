@@ -1,4 +1,5 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
@@ -195,10 +196,13 @@ function updateBook(PDO $pdo, array $book): bool
 {
     $stmt =
         $pdo->prepare(
-            'SELECT b.*, s.external_api_id AS series_external_api_id, s.name AS series_name 
-            FROM books b 
-            LEFT JOIN series s 
-            ON s.id = b.series_id 
+            'SELECT
+                b.*,
+                s.external_api_id AS series_external_api_id,
+                s.name AS series_name
+            FROM books AS b
+            LEFT JOIN series AS s
+                ON s.id = b.series_id
             WHERE b.external_api_id = ?'
         );
     $stmt->execute([$book['hardcover_id']]);
@@ -208,11 +212,13 @@ function updateBook(PDO $pdo, array $book): bool
     }
     $stmt =
         $pdo->prepare(
-            'SELECT a.external_api_id, a.name 
-            FROM book_authors ba 
-            JOIN authors a 
-            ON a.id = ba.author_id 
-            WHERE ba.book_id = ? 
+            'SELECT
+                a.external_api_id,
+                a.name
+            FROM book_authors AS ba
+            JOIN authors AS a
+                ON a.id = ba.author_id
+            WHERE ba.book_id = ?
             ORDER BY a.external_api_id, a.name'
         );
     $stmt->execute([$local['id']]);
@@ -224,7 +230,14 @@ function updateBook(PDO $pdo, array $book): bool
     );
     $stmt =
         $pdo->prepare(
-            'SELECT g.slug, g.name FROM book_genres bg JOIN genres g ON g.id = bg.genre_id WHERE bg.book_id = ? ORDER BY g.slug, g.name'
+            'SELECT
+                g.slug,
+                g.name
+            FROM book_genres AS bg
+            JOIN genres AS g
+                ON g.id = bg.genre_id
+            WHERE bg.book_id = ?
+            ORDER BY g.slug, g.name'
         );
     $stmt->execute([$local['id']]);
     $localGenres = comparableGenres($stmt->fetchAll());
@@ -317,8 +330,8 @@ function updateBook(PDO $pdo, array $book): bool
         if ($scalarChanges || $seriesChanged) {
             $pdo->prepare(
                 'UPDATE books SET ' .
-                    implode(', ', $fields) .
-                    ' WHERE id = ?'
+                implode(', ', $fields) .
+                ' WHERE id = ?'
             )->execute($params);
         }
         if ($authorsChanged) {
@@ -399,13 +412,16 @@ if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
 $pdo = require __DIR__ . '/../settings/init.php';
 $rows =
     $pdo
-    ->query(
-        "SELECT id, external_api_id 
-        FROM books 
-        WHERE external_api_id IS NOT NULL AND external_api_id <> '' 
-        ORDER BY id"
-    )
-    ->fetchAll();
+        ->query(
+            "SELECT
+                id,
+                external_api_id
+            FROM books
+            WHERE external_api_id IS NOT NULL
+                AND external_api_id <> ''
+            ORDER BY id"
+        )
+        ->fetchAll();
 $result = [
     'total' => count($rows),
     'selected' => count($rows),

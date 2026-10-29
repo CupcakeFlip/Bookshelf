@@ -1,8 +1,13 @@
+<!--
+    Arranges BookCard components in the responsive layout used by collections.
+    Shows an empty-result message and forwards card actions to the parent,
+    allowing pages to share presentation while keeping their own book data.
+-->
 <script setup>
 import BookCard from "./BookCard.vue";
 
 /** Books displayed as cards; an empty array produces the empty-state message. */
-defineProps({ books: { type: Array, default: () => [] } });
+defineProps({books: {type: Array, default: () => []}});
 
 /** Card events are forwarded so the page view remains the state owner. */
 const emit = defineEmits(["open", "status-change", "add-to-list"]);
@@ -29,5 +34,3 @@ const emit = defineEmits(["open", "status-change", "add-to-list"]);
         No books match your selection.
     </p>
 </template>
-
-<style scoped></style>

@@ -1,4 +1,5 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
@@ -63,9 +64,14 @@ function requestBody(): array
 function savedList(PDO $pdo, int $listId): array
 {
     $stmt = $pdo->prepare(
-        'SELECT id, name, description, created_at, updated_at 
-         FROM lists 
-         WHERE id = ?'
+        'SELECT
+            id,
+            name,
+            description,
+            created_at,
+            updated_at
+        FROM lists
+        WHERE id = ?'
     );
     $stmt->execute([$listId]);
     $list = $stmt->fetch();
@@ -74,11 +80,16 @@ function savedList(PDO $pdo, int $listId): array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT b.id, b.external_api_id AS hardcover_id, b.title, b.cover_url
-         FROM book_lists bl
-         JOIN books b ON b.id = bl.book_id
-         WHERE bl.lists_id = ?
-         ORDER BY b.title, b.id'
+        'SELECT
+            b.id,
+            b.external_api_id AS hardcover_id,
+            b.title,
+            b.cover_url
+        FROM book_lists AS bl
+        JOIN books AS b
+            ON b.id = bl.book_id
+        WHERE bl.lists_id = ?
+        ORDER BY b.title, b.id'
     );
     $stmt->execute([$listId]);
     $list['id'] = (int)$list['id'];
@@ -110,7 +121,7 @@ function validatedBookIds(PDO $pdo, array $bookIds): array
         $placeholders = implode(',', array_fill(0, count($bookIds), '?'));
         $stmt = $pdo->prepare("SELECT id FROM books WHERE id IN ($placeholders)");
         $stmt->execute($bookIds);
-        $existingIds = array_map('interval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        $existingIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
         if (count($existingIds) !== count($bookIds)) {
             respond(['error' => 'One or more books could not be found.'], 404);
         }

@@ -1,3 +1,6 @@
+# Defines shared text encoding, line endings, and indentation for project files.
+# Keeps supported editors consistent when contributors edit the repository.
+
 root = true
 
 [*]
@@ -7,3 +10,4 @@ indent_size = 4
 indent_style = space
 insert_final_newline = false
 tab_width = 4
+

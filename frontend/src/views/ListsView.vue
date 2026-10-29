@@ -1,8 +1,13 @@
+<!--
+    Displays the five reading-status lists with previews of recent books.
+    Loads a compact summary from the books API and renders shared list rows
+    that open the corresponding status-filtered collection.
+-->
 <script setup>
-import {computed, onMounted, onUnmounted, ref} from "vue";
-import Navbar from "@/components/Navbar.vue";
 import BookListRow from "@/components/BookListRow.vue";
-import ListRowsSkeleton from "@/components/ListRowsSkeleton.vue";
+import ListRowsSkeleton from "@/components/loading/ListRowsSkeleton.vue";
+import Navbar from "@/components/Navbar.vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 
 const definitions = [
     {id: "want_to_read", title: "Want to Read"},
@@ -26,13 +31,21 @@ async function fetchBooks() {
     try {
         const r = await fetch("/api/books.php?summary=lists", {signal: controller.signal});
         const p = await r.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        if (!r.ok) throw Error(p.error || "Could not load reading lists.");
+        if (controller.signal.aborted) {
+            return;
+        }
+        if (!r.ok) {
+            throw Error(p.error || "Could not load reading lists.");
+        }
         previews.value = p.lists;
     } catch (e) {
-        if (!controller.signal.aborted) error.value = e.message;
+        if (!controller.signal.aborted) {
+            error.value = e.message;
+        }
     } finally {
-        if (!controller.signal.aborted) loading.value = false;
+        if (!controller.signal.aborted) {
+            loading.value = false;
+        }
     }
 }
 

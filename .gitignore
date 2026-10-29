@@ -1,3 +1,6 @@
+# Excludes dependencies, build output, logs, editor files, and local settings from Git.
+# Keeps generated files and machine-specific configuration out of project changes.
+
 # Logs
 logs
 *.log

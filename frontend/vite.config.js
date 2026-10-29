@@ -1,6 +1,11 @@
+/**
+ * Configures Vue compilation, source aliases, and the frontend development server.
+ * Forwards API requests to local PHP and locates frontend tests under tests/,
+ * so development, previews, and Vitest use the same project setup.
+ */
+import vue from '@vitejs/plugin-vue';
 import {fileURLToPath, URL} from 'node:url';
 import {defineConfig} from 'vite';
-import vue from '@vitejs/plugin-vue';
 
 // The alias keeps imports independent of the component's relative directory.
 export default defineConfig({

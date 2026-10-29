@@ -1,8 +1,15 @@
+<!-- Made with AI -->
+
+<!--
+    Collects reading-session details before confirming Finished or Did Not Finish.
+    Loads the active attempt into the shared form and manages dialog focus.
+    Waits for the parent save callback before closing, preserving edits on failure.
+-->
 <script setup>
-import {nextTick, onBeforeUnmount, onMounted, ref, useId, watch} from "vue";
 import {getReadingSessions} from "@/api/books";
+import LoadingIndicator from "@/components/loading/LoadingIndicator.vue";
 import ReadingSessionForm from "@/components/ReadingSessionForm.vue";
-import LoadingIndicator from "@/components/LoadingIndicator.vue";
+import {nextTick, onBeforeUnmount, onMounted, ref, useId, watch} from "vue";
 
 const props = defineProps({
     book: {type: Object, required: true},
@@ -11,6 +18,7 @@ const props = defineProps({
     returnFocus: {type: Object, default: null},
     saveSession: {type: Function, required: true},
 });
+// confirm carries the saved API result, not the editable form draft.
 const emit = defineEmits(["update:modelValue", "confirm", "cancel"]);
 const value = ref(null);
 const loading = ref(false);
@@ -23,6 +31,10 @@ let requestNumber = 0;
 let previousFocus;
 let previousOverflow;
 
+/**
+ * Locks background scrolling and installs the dialog focus boundary.
+ * @returns {void}
+ */
 function activateDialog() {
     previousFocus = document.activeElement;
     previousOverflow = document.body.style.overflow;
@@ -32,8 +44,14 @@ function activateDialog() {
     nextTick(() => modal.value?.querySelector(".btn-close")?.focus());
 }
 
+/**
+ * Restores scrolling and focus when the dialog closes or unmounts.
+ * @returns {void}
+ */
 function deactivateDialog() {
-    if (previousOverflow === undefined) return;
+    if (previousOverflow === undefined) {
+        return;
+    }
     document.body.style.overflow = previousOverflow;
     previousOverflow = undefined;
     document.removeEventListener("keydown", handleKeydown);
@@ -41,7 +59,9 @@ function deactivateDialog() {
     const target = props.returnFocus ?? previousFocus;
     // Wait for the dropdown's pending action to settle and enable its trigger.
     nextTick(() => {
-        if (target?.isConnected) target.focus();
+        if (target?.isConnected) {
+            target.focus();
+        }
     });
 }
 
@@ -82,6 +102,11 @@ function today() {
     ).padStart(2, "0")}`;
 }
 
+/**
+ * Loads the active attempt and prepares default finish details.
+ * A request counter prevents a late response from reopening a closed dialog.
+ * @returns {Promise<void>} Errors remain visible for retry.
+ */
 async function open() {
     const request = ++requestNumber;
     loading.value = true;
@@ -99,7 +124,9 @@ async function open() {
             return;
         }
     }
-    if (request !== requestNumber || !props.modelValue) return;
+    if (request !== requestNumber || !props.modelValue) {
+        return;
+    }
     const active = sessions.find((session) =>
         ["reading", "paused"].includes(session.status),
     );
@@ -120,21 +147,32 @@ async function open() {
 }
 
 function cancel() {
-    if (saving.value) return;
+    if (saving.value) {
+        return;
+    }
     ++requestNumber;
     loading.value = false;
     emit("cancel");
     emit("update:modelValue", false);
 }
 
+/**
+ * Waits for the parent save callback before closing and emitting confirm.
+ * @param {Object} session Validated fields emitted by ReadingSessionForm.
+ * @returns {Promise<void>} Failed saves keep the form open.
+ */
 async function confirm(session) {
-    if (saving.value) return;
+    if (saving.value) {
+        return;
+    }
     const request = requestNumber;
     saving.value = true;
     saveError.value = "";
     try {
         const saved = await props.saveSession(session);
-        if (request !== requestNumber || !props.modelValue) return;
+        if (request !== requestNumber || !props.modelValue) {
+            return;
+        }
         if (saved === null) {
             saving.value = false;
             cancel();
@@ -143,9 +181,13 @@ async function confirm(session) {
         emit("confirm", saved);
         emit("update:modelValue", false);
     } catch (err) {
-        if (request === requestNumber) saveError.value = err.message;
+        if (request === requestNumber) {
+            saveError.value = err.message;
+        }
     } finally {
-        if (request === requestNumber) saving.value = false;
+        if (request === requestNumber) {
+            saving.value = false;
+        }
     }
 }
 

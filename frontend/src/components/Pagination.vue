@@ -1,6 +1,12 @@
+<!--
+    Provides reusable page navigation and an optional books-per-page selector.
+    Supports both known page counts and Hardcover results with a next-page flag.
+    Emits navigation requests while the parent view owns page state and fetching.
+-->
 <script setup>
 import {computed} from "vue";
 
+// The parent owns page state. A null totalPages uses Hardcover's hasNext flag.
 const props = defineProps({
     page: {type: Number, required: true},
     totalPages: {type: Number, default: null},
@@ -10,8 +16,11 @@ const props = defineProps({
     disabled: {type: Boolean, default: false},
 });
 const emit = defineEmits(["page-change", "limit-change"]);
+// Show at most five page buttons, shifting the window near either end.
 const pages = computed(() => {
-    if (props.totalPages === null) return [];
+    if (props.totalPages === null) {
+        return [];
+    }
     const first = Math.max(1, Math.min(props.page - 2, props.totalPages - 4));
     return Array.from({length: Math.min(5, props.totalPages)}, (_, index) => first + index);
 });
@@ -26,7 +35,9 @@ function go(page) {
         page < 1 ||
         page === props.page ||
         (props.totalPages !== null && page > props.totalPages)
-    ) return;
+    ) {
+        return;
+    }
 
     emit("page-change", page);
 }

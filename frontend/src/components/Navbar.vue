@@ -1,7 +1,12 @@
+<!--
+    Provides shared page navigation and the manual Hardcover sync action.
+    Shows sync results in a toast and notifies open views when book metadata
+    has changed so they can refresh their displayed data.
+-->
 <script setup>
-import {nextTick, onUnmounted, ref} from "vue";
+import ButtonSpinner from "@/components/loading/ButtonSpinner.vue";
 import {Toast} from "bootstrap";
-import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import {nextTick, onUnmounted, ref} from "vue";
 
 const syncing = ref(false);
 const toastElement = ref(null);
@@ -12,17 +17,9 @@ let active = true;
 const items = [
     {label: "Home", to: "/"},
     {label: "Lists", to: "/lists"},
-    {label: "Stats", to: "/stats", soon: true},
+    //{label: "Stats", to: "/stats"},
     {label: "Library", to: "/library"},
 ];
-
-/**
- * Prevents placeholder links from navigating before their feature exists.
- *
- * @param {MouseEvent} event Router-link click event.
- * @returns {void}
- */
-const stop = (event) => event.preventDefault();
 
 /**
  * Synchronizes metadata for locally saved books with Hardcover.
@@ -32,7 +29,9 @@ const stop = (event) => event.preventDefault();
  * @returns {Promise<void>}
  */
 async function syncBooks() {
-    if (syncing.value) return;
+    if (syncing.value) {
+        return;
+    }
     syncing.value = true;
 
     try {
@@ -67,8 +66,9 @@ async function syncBooks() {
             variant,
         );
 
-        if (updated > 0)
+        if (updated > 0) {
             window.dispatchEvent(new CustomEvent("bookshelf:books-synced"));
+        }
     } catch (error) {
         await showToast(
             error instanceof Error
@@ -83,11 +83,15 @@ async function syncBooks() {
 
 /** Shows one auto-dismissing Bootstrap toast without affecting navbar layout. */
 async function showToast(message, variant) {
-    if (!active) return;
+    if (!active) {
+        return;
+    }
     toastMessage.value = message;
     toastVariant.value = variant;
     await nextTick();
-    if (!active || !toastElement.value) return;
+    if (!active || !toastElement.value) {
+        return;
+    }
     Toast.getOrCreateInstance(toastElement.value, {
         autohide: true,
         delay: 5000,
@@ -124,15 +128,10 @@ onUnmounted(() => {
                 <ul class="gap-lg-2 navbar-nav ms-auto align-items-lg-center">
                     <li v-for="item in items" :key="item.to" class="nav-item">
                         <RouterLink
-                            :aria-disabled="item.soon ? 'true' : undefined"
-                            :tabindex="item.soon ? -1 : undefined"
                             :to="item.to"
                             class="nav-link"
                         >
                             {{ item.label }}
-                            <span v-if="item.soon" class="visually-hidden">
-                                (coming soon)
-                            </span>
                         </RouterLink>
                     </li>
                     <li class="nav-item">

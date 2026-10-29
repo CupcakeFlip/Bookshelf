@@ -1,8 +1,15 @@
+<!-- Made with AI -->
+
+<!--
+    Provides the shared control for adding, changing, or removing library status.
+    Uses the reading-status dialog for Finished and Did Not Finish details,
+    and reports confirmed API changes to cards and the book details page.
+-->
 <script setup>
-import {computed, nextTick, onMounted, onUnmounted, ref, useId, watch} from "vue";
 import {removeBookStatus, saveBookStatus} from "@/api/books";
+import ButtonSpinner from "@/components/loading/ButtonSpinner.vue";
 import ReadingStatusDialog from "@/components/ReadingStatusDialog.vue";
-import ButtonSpinner from "@/components/ButtonSpinner.vue";
+import {computed, nextTick, onMounted, onUnmounted, ref, useId, watch} from "vue";
 
 const dropdownElement = ref(null);
 const statusButton = ref(null);
@@ -103,15 +110,25 @@ async function selectStatus(status) {
             saved = await new Promise((resolve) => {
                 finishedDetails.value = resolve;
             });
-            if (saved === null) return;
-        } else saved = await persistStatus(status, previous);
-        if (!active) return;
-        if (saved === null) return;
-        if (active) emit("status-change", {
-            book: {...props.book, ...saved, status},
-            status,
-            previous,
-        });
+            if (saved === null) {
+                return;
+            }
+        } else {
+            saved = await persistStatus(status, previous);
+        }
+        if (!active) {
+            return;
+        }
+        if (saved === null) {
+            return;
+        }
+        if (active) {
+            emit("status-change", {
+                book: {...props.book, ...saved, status},
+                status,
+                previous,
+            });
+        }
     } catch (error) {
         errorMessage.value = error.message;
     } finally {
@@ -119,18 +136,32 @@ async function selectStatus(status) {
         pending.value = false;
         if (status === "finished" || status === "dnf") {
             nextTick(() => {
-                if (document.activeElement === document.body) statusButton.value?.focus();
+                if (document.activeElement === document.body) {
+                    statusButton.value?.focus();
+                }
             });
         }
     }
 }
 
+/**
+ * Runs the optional parent hook and persists a confirmed selection.
+ * @param {string|null} status New status, or null for removal.
+ * @param {string|null} previous Previous library status.
+ * @param {Object} [details={}] Confirmed session fields.
+ * @returns {Promise<Object|null>} Server result, or null if cancelled.
+ * @throws {Error} If the API rejects the change.
+ */
 async function persistStatus(status, previous, details = {}) {
     if (props.beforeStatusChange) {
         details = await props.beforeStatusChange(status, previous);
-        if (details === null) return null;
+        if (details === null) {
+            return null;
+        }
     }
-    if (!active) return null;
+    if (!active) {
+        return null;
+    }
     saving.value = true;
     try {
         return status === null
@@ -151,8 +182,11 @@ function saveDialogSession(session) {
  * @returns {void}
  */
 function mainStatusAction() {
-    if (currentStatus.value === null) selectStatus("want_to_read");
-    else isMenuOpen.value = !isMenuOpen.value;
+    if (currentStatus.value === null) {
+        selectStatus("want_to_read");
+    } else {
+        isMenuOpen.value = !isMenuOpen.value;
+    }
 }
 
 /**
@@ -243,8 +277,8 @@ watch(isMenuOpen, (isOpen) => {
             v-model="finishedDialogOpen"
             :book="book"
             :return-focus="statusButton"
-            :status="dialogStatus"
             :save-session="saveDialogSession"
+            :status="dialogStatus"
             @cancel="finishedDetails?.(null)"
             @confirm="finishedDetails?.($event)"
         />

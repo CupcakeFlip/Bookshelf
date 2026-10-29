@@ -1,10 +1,21 @@
 <?php
+/** Made with AI */
 
 declare(strict_types=1);
 
-/** Owned-format API. Formats are independent from the user_books reading row. */
+/**
+ * Provides the API for reading, replacing, and removing owned book formats.
+ * Keeps ownership separate from reading status and session formats, allowing
+ * the book details page to manage physical, e-book, and audiobook ownership.
+ */
 const OWNED_FORMATS = ['physical', 'ebook', 'audiobook'];
 
+/**
+ * Sends JSON and ends the request so no later handler can also write a response.
+ * @param array $payload Response data.
+ * @param int $status HTTP status code.
+ * @return never
+ */
 function respond(array $payload, int $status = 200): never
 {
     http_response_code($status);
@@ -16,7 +27,7 @@ function respond(array $payload, int $status = 200): never
 /**
  * Reads book_id from the query string or, for write requests, from JSON.
  * The decoded body is retained because the POST handler needs it again.
- * 
+ *
  * @return int Existing local book identifier.
  */
 function bookId(): int
@@ -34,7 +45,12 @@ function bookId(): int
     return (int)$id;
 }
 
-/** Returns the canonical, sorted format set persisted for one local book. */
+/**
+ * Loads ownership independently of the current library status.
+ * @param PDO $pdo Active connection.
+ * @param int $bookId Local book ID.
+ * @return string[] Sorted owned formats.
+ */
 function formatsFor(PDO $pdo, int $bookId): array
 {
     $stmt = $pdo->prepare('SELECT format FROM user_book_formats WHERE book_id = ? ORDER BY format');
@@ -89,12 +105,13 @@ if (!is_array($payload) || !array_key_exists('formats', $payload) || !is_array($
         400
     );
 }
-$formats = array_values(array_unique($payload['formats']));
-foreach ($formats as $format) {
+// Validate before deduplication: nested JSON values cannot be converted to strings.
+foreach ($payload['formats'] as $format) {
     if (!is_string($format) || !in_array($format, OWNED_FORMATS, true)) {
         respond(['error' => 'format is invalid.'], 422);
     }
 }
+$formats = array_values(array_unique($payload['formats']));
 sort($formats);
 $current = formatsFor($pdo, $id);
 // A sorted set comparison makes repeated saves a no-op and avoids needless

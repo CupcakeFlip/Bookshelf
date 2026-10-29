@@ -1,5 +1,11 @@
-import { createRouter, createWebHistory } from "vue-router";
+/**
+ * Maps browser paths to the Bookshelf page views using Vue Router.
+ * Loads the home view immediately and other views on demand, allowing
+ * navigation between pages without a full browser reload.
+ */
 import Frontpage from "@/views/Frontpage.vue";
+import {createRouter, createWebHistory} from "vue-router";
+
 const ListsView = () => import("@/views/ListsView.vue");
 const LibraryView = () => import("@/views/LibraryView.vue");
 const StatsView = () => import("@/views/StatsView.vue");

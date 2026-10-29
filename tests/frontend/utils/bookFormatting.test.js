@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+/* Made with AI */
 import {
     expandGenreIds,
     filterBooksByGenre,
@@ -7,23 +7,24 @@ import {
     normalizeGenre,
     normalizeGenres,
 } from "@/utils/bookFormatting";
+import {describe, expect, it} from "vitest";
 
 describe("formatAuthors", () => {
     it.each([
-        [[{ name: "Jane Smith" }], "Jane Smith"],
-        [[{ name: "Jane Smith" }, "John Doe"], "Jane Smith, John Doe"],
+        [[{name: "Jane Smith"}], "Jane Smith"],
+        [[{name: "Jane Smith"}, "John Doe"], "Jane Smith, John Doe"],
         [
             [
-                { name: "Jane Smith" },
-                { name: "John Doe" },
-                { name: "A. Writer" },
+                {name: "Jane Smith"},
+                {name: "John Doe"},
+                {name: "A. Writer"},
             ],
             "Jane Smith, John Doe et al.",
         ],
-        [["Jane Smith", null, { name: "John Doe" }], "Jane Smith, John Doe"],
+        [["Jane Smith", null, {name: "John Doe"}], "Jane Smith, John Doe"],
         [[], ""],
         [null, ""],
-        [{ name: "Jane Smith" }, ""],
+        [{name: "Jane Smith"}, ""],
     ])("formats %o", (authors, expected) =>
         expect(formatAuthors(authors)).toBe(expected),
     );
@@ -52,9 +53,9 @@ describe("normalizeGenre", () => {
     );
 
     it("does not mutate original genre data", () => {
-        const source = [{ name: "sci-fi", slug: "sci-fi" }];
+        const source = [{name: "sci-fi", slug: "sci-fi"}];
         expect(normalizeGenres(source)).toEqual(["Science Fiction"]);
-        expect(source).toEqual([{ name: "sci-fi", slug: "sci-fi" }]);
+        expect(source).toEqual([{name: "sci-fi", slug: "sci-fi"}]);
     });
 
     it("normalizes multi-word aliases consistently", () => {
@@ -69,10 +70,10 @@ describe("genre options", () => {
         const options = getGenreOptions([
             {
                 genres: [
-                    { name: "sci-fi" },
-                    { name: "Custom Genre" },
-                    { name: "custom genre" },
-                    { name: "Fantasy" },
+                    {name: "sci-fi"},
+                    {name: "Custom Genre"},
+                    {name: "custom genre"},
+                    {name: "Fantasy"},
                 ],
             },
         ]);
@@ -92,15 +93,15 @@ describe("genre options", () => {
     });
 
     it("handles books without genres and has no empty additional group", () => {
-        expect(getGenreOptions([{}, { genres: [] }]).additional).toEqual([]);
+        expect(getGenreOptions([{}, {genres: []}]).additional).toEqual([]);
     });
 });
 
 describe("filterBooksByGenre", () => {
     const books = [
-        { title: "A", genres: [{ name: "sci-fi" }] },
-        { title: "B", genres: [{ name: "Fantasy" }] },
-        { title: "C" },
+        {title: "A", genres: [{name: "sci-fi"}]},
+        {title: "B", genres: [{name: "Fantasy"}]},
+        {title: "C"},
     ];
 
     it("matches aliases, all genres, and no matches safely", () => {
@@ -121,11 +122,11 @@ describe("filterBooksByGenre", () => {
 
 describe("genre categories", () => {
     const genres = [
-        { id: 1, name: "Fantasy" },
-        { id: 2, name: "Fantasy Romance" },
-        { id: 3, name: "Romantasy" },
-        { id: 4, name: "Romance" },
-        { id: 5, name: "sci-fi" },
+        {id: 1, name: "Fantasy"},
+        {id: 2, name: "Fantasy Romance"},
+        {id: 3, name: "Romantasy"},
+        {id: 4, name: "Romance"},
+        {id: 5, name: "sci-fi"},
     ];
 
     it("expands Fantasy and Romance independently with overlapping subgenres", () => {
